@@ -3,6 +3,7 @@ const API_BASE = "https://api.thingiverse.com";
 
 exports.handler = async (event) => {
     const token = process.env.THINGIVERSE_TOKEN;
+    
 
     if (!token) {
         return json(500, {
