@@ -11,13 +11,37 @@ exports.handler = async (event) => {
     }
 
     const params = event.queryStringParameters || {};
-    const { query, id, files, sort, page } = params;
+    const { query, id, files, sort, fileId } = params;
 
+    // 1. Proxy STL binary for 3D Three.js viewport preview (avoids browser CORS)
+    if (fileId) {
+        try {
+            const dlRes = await fetch(`${API_BASE}/files/${encodeURIComponent(fileId)}/download`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (!dlRes.ok) {
+                return json(dlRes.status, { error: "Could not fetch STL file from Thingiverse." });
+            }
+            const buffer = Buffer.from(await dlRes.arrayBuffer());
+            return {
+                statusCode: 200,
+                headers: {
+                    "Content-Type": "application/octet-stream",
+                    "Cache-Control": "public, max-age=3600"
+                },
+                body: buffer.toString("base64"),
+                isBase64Encoded: true
+            };
+        } catch (err) {
+            return json(502, { error: "Failed to proxy STL file.", details: err.message });
+        }
+    }
+
+    // 2. Validate search / model ID
     if (!query && !id) {
         return json(400, { error: "Please provide a search query or model ID." });
     }
 
-    // Build API endpoint (Search, Model Details, or Model Files)
     let endpoint;
     if (id && files === "true") {
         endpoint = `/things/${encodeURIComponent(id)}/files`;
@@ -32,7 +56,6 @@ exports.handler = async (event) => {
     if (!id) {
         url.searchParams.set("type", "things");
         url.searchParams.set("per_page", "20");
-        if (page) url.searchParams.set("page", page);
         if (sort) url.searchParams.set("sort", sort);
     }
 
