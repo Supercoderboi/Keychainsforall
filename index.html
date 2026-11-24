@@ -160,6 +160,26 @@
               </div>
             </div>
 
+            <div class="space-y-1.5">
+              <canvas id="imagePreviewCanvas" width="384" height="216" class="hidden w-full h-36 rounded-lg border border-slate-700 bg-slate-950 cursor-crosshair"></canvas>
+              <p id="imagePreviewStatus" class="text-[9px] text-slate-500">Auto cutout works best when the background is simple. For a tricky photo, sample the background or keep the full photo.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Photo Background</label>
+                <select id="imageBgMode" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+                  <option value="auto" selected>Auto cutout</option>
+                  <option value="sample">Click to sample</option>
+                  <option value="keep">Keep full photo</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Background Tolerance</label>
+                <input id="imageBgTolerance" type="range" min="12" max="120" step="4" value="48" class="w-full h-1.5 bg-slate-800 rounded-lg mt-2">
+                <span id="imageBgToleranceVal" class="block text-right text-[10px] text-indigo-400 font-bold">48</span>
+              </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="block font-bold text-slate-400 mb-1">SVG / Image Style</label>
@@ -925,14 +945,12 @@ function removeImportedStl(rebuild = true) {
   if (rebuild) buildModel();
 }
 
-function processImageToReliefGrid(img, threshold, smoothing = 3) {
+function processImageToReliefGrid(img, threshold, smoothing = 3, bgMode = 'auto', sampleColor = null, tolerance = 48) {
   const canvas2 = document.createElement('canvas');
-  const res = 96;
+  const res = 128;
   canvas2.width = res;
   canvas2.height = res;
   const ctx = canvas2.getContext('2d');
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, res, res);
   const imageWidth = img.naturalWidth || img.width;
   const imageHeight = img.naturalHeight || img.height;
   const fitScale = Math.min(res / imageWidth, res / imageHeight);
@@ -943,38 +961,74 @@ function processImageToReliefGrid(img, threshold, smoothing = 3) {
   const data = imgData.data;
   const imageLeft = (res - drawWidth) / 2;
   const imageTop = (res - drawHeight) / 2;
-  let edgeBrightnessTotal = 0;
-  let edgeSamples = 0;
-  for (let sample = 0; sample < 32; sample++) {
-    const t = sample / 31;
-    const x = Math.max(0, Math.min(res - 1, Math.round(imageLeft + t * (drawWidth - 1))));
-    const y = Math.max(0, Math.min(res - 1, Math.round(imageTop + t * (drawHeight - 1))));
-    for (const [edgeX, edgeY] of [[x, Math.round(imageTop)], [x, Math.round(imageTop + drawHeight - 1)], [Math.round(imageLeft), y], [Math.round(imageLeft + drawWidth - 1), y]]) {
-      const edgeIndex = (edgeY * res + edgeX) * 4;
-      edgeBrightnessTotal += 0.299 * data[edgeIndex] + 0.587 * data[edgeIndex + 1] + 0.114 * data[edgeIndex + 2];
-      edgeSamples++;
+  const count = res * res;
+  const removed = new Uint8Array(count);
+  let bg = sampleColor;
+  if (bgMode !== 'keep' && !bg) {
+    const edge = [];
+    for (let x = 0; x < res; x += 3) {
+      edge.push((Math.round(imageTop) * res + x) * 4, (Math.round(imageTop + drawHeight - 1) * res + x) * 4);
+    }
+    for (let y = 0; y < res; y += 3) {
+      edge.push((y * res + Math.round(imageLeft)) * 4, (y * res + Math.round(imageLeft + drawWidth - 1)) * 4);
+    }
+    const colors = edge.filter(i => data[i + 3] > 30).map(i => [data[i], data[i + 1], data[i + 2]]).sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
+    bg = colors[Math.floor(colors.length / 2)] || [255, 255, 255];
+  }
+  if (bgMode !== 'keep') {
+    const queue = new Int32Array(count);
+    let head = 0, tail = 0;
+    const push = (n) => { if (!removed[n]) { removed[n] = 1; queue[tail++] = n; } };
+    for (let x = 0; x < res; x++) { push(x); push((res - 1) * res + x); }
+    for (let y = 1; y < res - 1; y++) { push(y * res); push(y * res + res - 1); }
+    const tolSq = tolerance * tolerance * 3;
+    while (head < tail) {
+      const n = queue[head++], i = n * 4;
+      const dr = data[i] - bg[0], dg = data[i + 1] - bg[1], db = data[i + 2] - bg[2];
+      if (data[i + 3] > 30 && dr * dr + dg * dg + db * db > tolSq) continue;
+      removed[n] = 2;
+      const x = n % res, y = (n / res) | 0;
+      if (x > 0) push(n - 1); if (x < res - 1) push(n + 1);
+      if (y > 0) push(n - res); if (y < res - 1) push(n + res);
     }
   }
-  const darkBackground = edgeBrightnessTotal / Math.max(1, edgeSamples) < 128;
-
-  const grid = [];
-  for (let y = 0; y < res; y++) {
-    const row = [];
-    for (let x = 0; x < res; x++) {
-      const idx = (y * res + x) * 4;
-      const r = data[idx];
-      const g = data[idx + 1];
-      const b = data[idx + 2];
-      const a = data[idx + 3];
-
-      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-      const featureContrast = darkBackground ? brightness : threshold - brightness;
-      const raisedAmount = a > 30 ? Math.max(0, Math.min(1, featureContrast / Math.max(1, threshold))) : 0;
-      row.push(Math.pow(raisedAmount, 0.8));
+  const edgeLums = [];
+  for (let x = 0; x < res; x += 2) {
+    for (const y of [Math.round(imageTop), Math.round(imageTop + drawHeight - 1)]) {
+      const i = (y * res + x) * 4; edgeLums.push(.299 * data[i] + .587 * data[i + 1] + .114 * data[i + 2]);
     }
-    grid.push(row);
   }
-  return { grid: smoothReliefGrid(grid, smoothing), res };
+  const darkBackground = edgeLums.reduce((a, b) => a + b, 0) / Math.max(1, edgeLums.length) < 128;
+  let minX = res, minY = res, maxX = -1, maxY = -1;
+  const raw = Array.from({ length: res }, () => Array(res).fill(0));
+  for (let y = 0; y < res; y++) for (let x = 0; x < res; x++) {
+    const n = y * res + x, i = n * 4;
+    if (bgMode === 'keep' ? data[i + 3] < 30 : removed[n] === 2) continue;
+    minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+    const lum = .299 * data[i] + .587 * data[i + 1] + .114 * data[i + 2];
+    const contrast = darkBackground ? lum : threshold - lum;
+    raw[y][x] = Math.pow(Math.max(0, Math.min(1, contrast / Math.max(1, threshold))), .8);
+  }
+  if (maxX < minX || maxY < minY) { minX = 0; minY = 0; maxX = res - 1; maxY = res - 1; }
+  const pad = bgMode === 'keep' ? 0 : 2;
+  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad); maxX = Math.min(res - 1, maxX + pad); maxY = Math.min(res - 1, maxY + pad);
+  let grid = raw.slice(minY, maxY + 1).map(row => row.slice(minX, maxX + 1));
+  grid = smoothReliefGrid(grid, smoothing);
+  return { grid, res: Math.max(grid.length, grid[0].length), aspect: grid[0].length / grid.length };
+}
+
+let imageBgSample = null;
+let imagePreviewRect = null;
+function renderImagePreview() {
+  const preview = $('imagePreviewCanvas');
+  if (!preview || !imageData || !imageData.width) return;
+  preview.classList.remove('hidden');
+  const ctx = preview.getContext('2d');
+  ctx.fillStyle = '#111827'; ctx.fillRect(0, 0, preview.width, preview.height);
+  const scale = Math.min(preview.width / imageData.width, preview.height / imageData.height);
+  const w = imageData.width * scale, h = imageData.height * scale;
+  imagePreviewRect = { x: (preview.width - w) / 2, y: (preview.height - h) / 2, w, h };
+  ctx.drawImage(imageData, imagePreviewRect.x, imagePreviewRect.y, w, h);
 }
 
 function smoothReliefGrid(source, passes) {
@@ -1284,6 +1338,10 @@ function buildModel() {
       }
 
     } else if (imageData) {
+      const bgMode = $('imageBgMode')?.value || 'auto';
+      const tolerance = Number($('imageBgTolerance')?.value || 48);
+      const { grid, aspect } = processImageToReliefGrid(imageData, threshold, smoothing, bgMode, imageBgSample, tolerance);
+      totalHeight = manualH > 0 ? manualH : totalWidth / Math.max(0.1, aspect);
       const includeBase = svgBaseStyle !== 'none' && svgTreatment !== 'engraved';
       if (includeBase) {
         const baseShape = svgBaseStyle === 'circle' ? new THREE.Shape() : roundedShape(totalWidth, totalHeight, 6);
@@ -1291,7 +1349,6 @@ function buildModel() {
         designGroup.add(extrude(baseShape, bt, 0, matBase));
       }
 
-      const { grid } = processImageToReliefGrid(imageData, threshold, smoothing);
       const reliefWidth = includeBase ? Math.max(2, totalWidth - 4) : totalWidth;
       const reliefHeightMm = includeBase ? Math.max(2, totalHeight - 4) : totalHeight;
       const reliefGeometry = createImageReliefGeometry(
@@ -1468,9 +1525,12 @@ $('stlImportFile').addEventListener('change', async (event) => {
 $('imageFile').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  imageBgSample = null;
 
   if (file.type === 'image/svg+xml' || file.name.endsWith('.svg')) {
     imageData = null;
+    $('imagePreviewCanvas').classList.add('hidden');
+    $('imagePreviewStatus').textContent = 'SVG vectors use their original paths and do not need photo background removal.';
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -1487,12 +1547,13 @@ $('imageFile').addEventListener('change', (e) => {
     parsedSvgPaths = [];
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => { imageData = img; buildModel(); URL.revokeObjectURL(url); };
+    img.onload = () => { imageData = img; renderImagePreview(); $('imagePreviewStatus').textContent = 'Background removal is estimated from the image edges. Switch to Click to sample for a more precise cutout.'; buildModel(); URL.revokeObjectURL(url); };
+    img.onerror = () => { $('imagePreviewStatus').textContent = 'This image could not be opened. Try a PNG, JPG, or WebP file.'; URL.revokeObjectURL(url); };
     img.src = url;
   }
 });
 
-['word', 'fontSize', 'textPadding', 'baseStyle', 'textHeight', 'manualBaseW', 'manualBaseH', 'imageSize', 'reliefHeight', 'contrastThreshold', 'imageSmoothing', 'svgMode', 'svgBaseStyle', 'svgSimplification', 'baseThick', 'showBed'].forEach((id) => {
+['word', 'fontSize', 'textPadding', 'baseStyle', 'textHeight', 'manualBaseW', 'manualBaseH', 'imageSize', 'reliefHeight', 'contrastThreshold', 'imageSmoothing', 'imageBgTolerance', 'svgMode', 'svgBaseStyle', 'svgSimplification', 'baseThick', 'showBed'].forEach((id) => {
   const el = $(id);
   if (el) {
     el.addEventListener('input', () => {
@@ -1502,6 +1563,7 @@ $('imageFile').addEventListener('change', (e) => {
         $('contrastThresholdVal').textContent = `${val} (${val < 90 ? 'High Contrast' : val > 160 ? 'Detailed' : 'Medium'})`;
       }
       if (id === 'imageSmoothing') $('imageSmoothingVal').textContent = $('imageSmoothing').value;
+      if (id === 'imageBgTolerance') $('imageBgToleranceVal').textContent = $('imageBgTolerance').value;
       if (id === 'svgSimplification') {
         const labels = ['High Quality', 'Detailed', 'Balanced', 'Fast', 'Low Density'];
         $('svgSimplificationVal').textContent = labels[Number($('svgSimplification').value) - 1] || 'Balanced';
@@ -1509,6 +1571,27 @@ $('imageFile').addEventListener('change', (e) => {
       buildModel();
     });
   }
+});
+
+$('imageBgMode').addEventListener('change', () => {
+  const mode = $('imageBgMode').value;
+  $('imagePreviewStatus').textContent = mode === 'sample'
+    ? 'Tap a background area in the preview. The model updates with that color removed.'
+    : mode === 'keep' ? 'The whole photo will become a rectangular photo relief.'
+      : 'Background removal is estimated from the image edges. Raise tolerance if a halo remains.';
+  if (mode !== 'sample') imageBgSample = null;
+  buildModel();
+});
+$('imagePreviewCanvas').addEventListener('click', (event) => {
+  if ($('imageBgMode').value !== 'sample' || !imageData || !imagePreviewRect) return;
+  const canvas = $('imagePreviewCanvas'), bounds = canvas.getBoundingClientRect();
+  const x = (event.clientX - bounds.left) * canvas.width / bounds.width;
+  const y = (event.clientY - bounds.top) * canvas.height / bounds.height;
+  if (x < imagePreviewRect.x || x > imagePreviewRect.x + imagePreviewRect.w || y < imagePreviewRect.y || y > imagePreviewRect.y + imagePreviewRect.h) return;
+  const pixel = canvas.getContext('2d').getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+  imageBgSample = [pixel[0], pixel[1], pixel[2]];
+  $('imagePreviewStatus').textContent = `Sampled background RGB ${imageBgSample.join(', ')}. Adjust tolerance if needed.`;
+  buildModel();
 });
 
 $('addQuickLoopBtn').addEventListener('click', () => {
