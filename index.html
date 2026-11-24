@@ -1416,6 +1416,7 @@ function escapeHtml(value = '') {
 
 function getThingiverseItems(payload) {
   if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.models)) return payload.models;
   if (Array.isArray(payload?.hits)) return payload.hits;
   if (Array.isArray(payload?.things)) return payload.things;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -1426,7 +1427,7 @@ function getThingiverseItems(payload) {
 function thingiverseModelFromApi(item) {
   const id = item.id ?? item.thing_id ?? item.public_id;
   if (!id) return null;
-  const creator = item.creator?.name || item.creator?.username || item.creator?.full_name || item.username || 'Unknown creator';
+  const creator = typeof item.creator === 'string' ? item.creator : (item.creator?.name || item.creator?.username || item.creator?.full_name || item.username || 'Unknown creator');
   const url = item.public_url || item.url || `https://www.thingiverse.com/thing:${encodeURIComponent(id)}`;
   const safeUrl = /^https:\/\/www\.thingiverse\.com\//i.test(url) ? url : `https://www.thingiverse.com/thing:${encodeURIComponent(id)}`;
   const thumbnailCandidate = typeof item.thumbnail === 'string' ? item.thumbnail : (item.thumbnail?.url || item.thumbnail_url || item.preview_image || item.default_image?.url || '');
@@ -1501,9 +1502,9 @@ async function searchThingiverse(query) {
   results.innerHTML = '';
   try {
     const sort = $('thingiverseSort').value;
-    const payload = await fetchThingiverseJson(
-      { query, sort }
-    );
+    const response = await fetch(`/.netlify/functions/search?q=${encodeURIComponent(query)}&sort=${encodeURIComponent(sort)}`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || `Thingiverse search failed (HTTP ${response.status}).`);
     const items = getThingiverseItems(payload).map(thingiverseModelFromApi).filter(Boolean);
     if (!items.length) {
       status.textContent = 'No models found. Try a different search phrase.';
