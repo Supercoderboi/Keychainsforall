@@ -1,0 +1,1721 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keychains for All - Ethan Paul Kakkassery</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    background-color: #0b0f19;
+    color: #f8fafc;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #0f172a; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+  input[type=range] { accent-color: #6366f1; }
+
+  .viewport-bg {
+    background: radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 70%, #080d1a 100%);
+  }
+
+  .glass-card {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body class="min-h-screen flex flex-col select-none text-xs">
+
+  <!-- HEADER -->
+  <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 py-2.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-500 text-white font-black flex items-center justify-center text-xl shadow-lg shadow-indigo-500/20">
+        K
+      </div>
+      <div>
+        <h1 class="font-black text-sm sm:text-base leading-tight tracking-tight text-white flex items-center gap-2">
+          Keychains for All
+          <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ender-3 V3 KE</span>
+        </h1>
+        <p class="text-[11px] text-slate-400 font-medium">Design • Direct Print Order • Pickup Tracker</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="trackOrderBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold transition flex items-center gap-1.5">
+        <span>🔍 Track Order Status</span>
+      </button>
+      <button id="adminBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 font-bold transition">
+        🔒 Manager Portal
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN LAYOUT -->
+  <main class="max-w-[1700px] w-full mx-auto p-3 sm:p-4 flex-1 flex flex-col gap-4">
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 items-start">
+      
+      <!-- CONTROLS PANEL (LEFT) -->
+      <section class="lg:col-span-5 xl:col-span-4 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col max-h-[88vh] lg:max-h-none">
+        
+        <!-- MODE TABS -->
+        <div class="p-2 bg-slate-950 border-b border-slate-800 grid grid-cols-4 gap-1.5">
+          <button class="mode-tab active px-2 py-2 rounded-xl border border-indigo-500/40 bg-indigo-600/20 text-indigo-300 font-extrabold flex flex-col items-center gap-1 transition" data-mode="text">
+            <span class="text-base leading-none">Ａ</span>
+            <span>Dynamic Text</span>
+          </button>
+          <button class="mode-tab px-2 py-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800 font-extrabold flex flex-col items-center gap-1 transition" data-mode="image">
+            <span class="text-base leading-none">🖼</span>
+            <span>SVG / Image</span>
+          </button>
+          <button class="mode-tab px-2 py-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800 font-extrabold flex flex-col items-center gap-1 transition" data-mode="cad">
+            <span class="text-base leading-none">⬡</span>
+            <span>CAD Studio</span>
+          </button>
+          <button class="mode-tab px-2 py-2 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800 font-extrabold flex flex-col items-center gap-1 transition" data-mode="thingiverse">
+            <span class="text-base leading-none">🌐</span>
+            <span>Thingiverse</span>
+          </button>
+        </div>
+
+        <div class="p-4 overflow-y-auto space-y-4 flex-1">
+          
+          <!-- MODE 1: DYNAMIC TEXT CONTROLS -->
+          <div id="textControls" class="space-y-3">
+            <div>
+              <label class="block font-bold text-slate-300 mb-1">Keychain Text (Auto-scaling Base)</label>
+              <input id="word" type="text" maxlength="24" value="Ethan" placeholder="e.g. ALEX" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-extrabold focus:border-indigo-500 outline-none uppercase tracking-wider">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Font Size (mm)</label>
+                <input id="fontSize" type="number" min="5" max="25" value="10" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Text Padding (mm)</label>
+                <input id="textPadding" type="number" min="2" max="15" value="4" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Base Plate Shape</label>
+                <select id="baseStyle" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+                  <option value="wrap">Tight Wrap Outline</option>
+                  <option value="rounded">Rounded Box</option>
+                  <option value="pill">Pill Shape</option>
+                  <option value="tag">Luggage Tag</option>
+                  <option value="none">Text Only (No Base)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Text Depth (mm)</label>
+                <input id="textHeight" type="range" min="0.8" max="4.0" step="0.2" value="1.6" class="w-full h-1.5 bg-slate-800 rounded-lg">
+                <span id="textHeightVal" class="text-[10px] text-indigo-400 font-bold block text-right">1.6 mm</span>
+              </div>
+            </div>
+
+            <!-- EXPLICIT KEYCHAIN OVERRIDE SIZES -->
+            <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/60">
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Manual Base Width (mm)</label>
+                <input id="manualBaseW" type="number" min="0" max="200" value="0" placeholder="Auto" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Manual Base Depth (mm)</label>
+                <input id="manualBaseH" type="number" min="0" max="200" value="0" placeholder="Auto" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+              </div>
+            </div>
+          </div>
+
+          <!-- MODE 2: SVG & IMAGE CONTOUR -->
+          <div id="imageControls" class="space-y-3 hidden">
+            <div>
+              <label class="block font-bold text-slate-300 mb-1">Upload SVG Vector or High-Contrast Photo / Logo</label>
+              <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 bg-slate-950 rounded-xl p-3 text-center cursor-pointer transition">
+                <input id="imageFile" type="file" accept="image/svg+xml,image/png,image/jpeg,image/webp" class="hidden">
+                <div class="text-slate-400 space-y-0.5">
+                  <p class="font-extrabold text-slate-200">Click to upload SVG or Photo (PNG/JPG)</p>
+                  <p class="text-[10px] text-slate-500">Supports detailed facial relief & multi-path vector graphics</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">SVG / Image Style</label>
+                <select id="svgMode" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+                  <option value="relief" selected>Detail Relief (Facial/Inner Features Raised)</option>
+                  <option value="engraved">Engraved Cutouts (Lines Recessed)</option>
+                  <option value="solid">Silhouette Fill</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Model Size Width (mm)</label>
+                <input id="imageSize" type="number" min="20" max="150" value="50" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+              </div>
+            </div>
+
+            <!-- PHOTO CONTRAST & FEATURE THRESHOLD SLIDER -->
+            <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="font-bold text-slate-300 text-[11px]">Photo Feature / Detail Contrast</label>
+                <span id="contrastThresholdVal" class="text-[10px] text-indigo-400 font-bold">128 (Medium)</span>
+              </div>
+              <input id="contrastThreshold" type="range" min="40" max="220" step="5" value="128" class="w-full h-1.5 bg-slate-800 rounded-lg">
+              <p class="text-[9px] text-slate-500">Adjust threshold to bring out facial features, eyes, and line details from uploaded images.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Detail Relief Height (mm)</label>
+                <input id="reliefHeight" type="range" min="0.6" max="4.0" step="0.2" value="1.6" class="w-full h-1.5 bg-slate-800 rounded-lg">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Base Plate Shape</label>
+                <select id="svgBaseStyle" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+                  <option value="rounded" selected>Rounded Box Base</option>
+                  <option value="circle">Circular Base</option>
+                  <option value="svg">Use SVG/Photo Silhouette Base</option>
+                  <option value="none">No Base (Floating Relief)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- SVG COMPLEXITY & DOWNSAMPLING CONTROL -->
+            <div class="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <div class="flex items-center justify-between">
+                <label class="font-bold text-slate-300 text-[11px]">SVG Detail & Polyline Simplification</label>
+                <span id="svgSimplificationVal" class="text-[10px] text-indigo-400 font-bold">Balanced</span>
+              </div>
+              <input id="svgSimplification" type="range" min="1" max="5" step="1" value="3" class="w-full h-1.5 bg-slate-800 rounded-lg">
+            </div>
+          </div>
+
+          <!-- THINGIVERSE MODEL BROWSER -->
+          <div id="thingiverseControls" class="hidden space-y-3">
+            <div class="space-y-1">
+              <h3 class="font-black text-slate-100 text-sm">Browse Thingiverse</h3>
+              <p class="text-[10px] leading-relaxed text-slate-400">Search public 3D models, inspect the creator and licence, then send a model to the manager for review.</p>
+            </div>
+            <form id="thingiverseSearchForm" class="flex gap-2">
+              <input id="thingiverseQuery" type="search" maxlength="100" required placeholder="Search models (e.g. keychain, flexi...)" class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
+              <button id="thingiverseSearchBtn" type="submit" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black">Search</button>
+            </form>
+            <div class="flex items-center justify-between gap-2">
+              <label for="thingiverseSort" class="text-[10px] text-slate-400 font-bold">Sort results</label>
+              <select id="thingiverseSort" class="px-2 py-1 rounded-lg bg-slate-950 border border-slate-700 text-white text-[10px] font-bold">
+                <option value="relevant">Most relevant</option>
+                <option value="popular">Most popular</option>
+                <option value="newest">Newest</option>
+              </select>
+            </div>
+            <p id="thingiverseStatus" class="text-[10px] text-slate-400" aria-live="polite">Search for a model to get started.</p>
+            <div id="thingiverseResults" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+            <div id="thingiverseSelected" class="hidden p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/40 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-black text-indigo-200">Selected model</span>
+                <button id="clearThingiverseSelection" type="button" class="text-[10px] text-slate-400 hover:text-white">Clear</button>
+              </div>
+              <p id="thingiverseSelectedName" class="text-xs text-white font-bold"></p>
+              <p id="thingiverseSelectedMeta" class="text-[10px] text-slate-300"></p>
+              <p id="thingiverseSelectedLicense" class="text-[10px] text-amber-300"></p>
+              <a id="thingiverseSelectedLink" href="#" target="_blank" rel="noopener noreferrer" class="inline-block text-[10px] text-indigo-300 underline">Open original Thingiverse page</a>
+              <p class="text-[10px] text-slate-400">The manager will check the model, licence and print suitability before accepting the order.</p>
+              <button id="useThingiverseModelBtn" type="button" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black">Use this model &amp; submit order</button>
+            </div>
+            <p class="text-[9px] leading-relaxed text-slate-500">Thingiverse models have different licences. A model being visible here does not automatically mean it can be used for paid printing. We display the licence when available and require manager approval.</p>
+          </div>
+
+          <!-- CAD & GIZMO CONTROLS -->
+          <div id="cadControls">
+          <div class="pt-3 border-t border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-black uppercase tracking-wider text-slate-400 text-[10px]">3D Viewport Controls & Primitives</span>
+              <span id="gizmoStatus" class="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/20 font-bold">Gizmo: Move (W)</span>
+            </div>
+
+            <!-- GIZMO MODE BUTTONS -->
+            <div class="grid grid-cols-3 gap-1.5">
+              <button id="gizmoTranslate" class="py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-[11px] shadow">Move (W)</button>
+              <button id="gizmoRotate" class="py-1.5 rounded-lg bg-slate-800 text-slate-300 font-bold text-[11px] hover:bg-slate-700">Rotate (E)</button>
+              <button id="gizmoScale" class="py-1.5 rounded-lg bg-slate-800 text-slate-300 font-bold text-[11px] hover:bg-slate-700">Scale (R)</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <select id="shapeType" class="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+                <option value="box">Box Block</option>
+                <option value="cylinder">Cylinder</option>
+                <option value="sphere">Sphere</option>
+                <option value="torus">Torus Ring</option>
+                <option value="heart">Heart</option>
+                <option value="loop">Keyring Attachment Loop</option>
+                <option value="3dtext">3D Text Primitive</option>
+              </select>
+              <button id="addShape" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black transition">
+                ＋ Add Shape
+              </button>
+            </div>
+
+            <!-- STL IMPORTER -->
+            <div class="p-2 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <input id="stlImportFile" type="file" accept=".stl" class="hidden">
+              <button id="importStlBtn" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold text-xs border border-slate-700 transition">
+                📂 Import Custom STL
+              </button>
+            </div>
+
+            <!-- CAD OBJECTS CHIPS -->
+            <div id="objectList" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1 bg-slate-950 rounded-lg border border-slate-800">
+              <span class="text-slate-500 italic p-1">No custom CAD primitives added yet.</span>
+            </div>
+
+            <!-- CAD OBJECT INSPECTOR -->
+            <div id="objectEditor" class="hidden p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+              <div class="flex items-center justify-between font-extrabold border-b border-slate-800 pb-1 text-slate-300">
+                <span id="selectedShapeName">Selected CAD Object</span>
+                <label class="flex items-center gap-1.5 text-xs text-rose-400 cursor-pointer">
+                  <input id="isHoleToggle" type="checkbox" class="w-3.5 h-3.5 rounded accent-rose-500">
+                  <span class="font-extrabold">Negative Hole Cutter</span>
+                </label>
+              </div>
+
+              <!-- NUMERIC SHAPE SIZE & POSITION CONTROLS -->
+              <div class="grid grid-cols-3 gap-1.5 pt-1">
+                <div>
+                  <label class="block font-bold text-slate-500 text-[9px] uppercase">Width (mm)</label>
+                  <input id="shapeEditW" type="number" min="1" max="150" value="12" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-bold text-xs">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-500 text-[9px] uppercase">Depth / Height (mm)</label>
+                  <input id="shapeEditH" type="number" min="0.5" max="50" step="0.5" value="4" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-bold text-xs">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-500 text-[9px] uppercase">Pos X (mm)</label>
+                  <input id="shapeEditX" type="number" step="1" value="0" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-bold text-xs">
+                </div>
+              </div>
+              <div class="grid grid-cols-3 gap-1.5">
+                <div>
+                  <label class="block font-bold text-slate-500 text-[9px] uppercase">Pos Y (mm)</label>
+                  <input id="shapeEditY" type="number" step="1" value="0" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-bold text-xs">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-500 text-[9px] uppercase">Pos Z Offset (mm)</label>
+                  <input id="shapeEditZ" type="number" step="0.5" value="0" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-bold text-xs">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-500 text-[9px] uppercase">Rot Z (°)</label>
+                  <input id="shapeEditRotZ" type="number" step="5" value="0" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-bold text-xs">
+                </div>
+              </div>
+
+              <div id="textPrimInputGroup" class="hidden">
+                <label class="block font-bold text-slate-400 mb-0.5">3D Text Value</label>
+                <input id="primTextVal" type="text" value="3D" class="w-full px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-bold">
+              </div>
+
+              <div class="flex gap-2 pt-1">
+                <button id="deleteObj" class="w-full py-1 bg-rose-950 hover:bg-rose-900 text-rose-300 rounded font-bold text-[11px] border border-rose-800">Delete Object</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- BASE & KEYRING HOLE -->
+          <div class="pt-3 border-t border-slate-800 space-y-2.5">
+            <span class="font-black uppercase tracking-wider text-slate-400 text-[10px] block">Base Plate & Keyring Attachment</span>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Base Thickness</label>
+                <select id="baseThick" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
+                  <option value="2.0">2.0 mm (Fast)</option>
+                  <option value="3.0">3.0 mm</option>
+                  <option value="4.0" selected>4.0 mm (Standard PLA)</option>
+                  <option value="5.0">5.0 mm</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-400 mb-1">Bed Grid</label>
+                <label class="flex items-center gap-2 font-bold text-slate-300 cursor-pointer pt-2">
+                  <input id="showBed" type="checkbox" checked class="w-4 h-4 rounded accent-indigo-500">
+                  <span>Show Bed</span>
+                </label>
+              </div>
+            </div>
+
+            <button id="addQuickLoopBtn" class="w-full py-2 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 rounded-xl font-extrabold flex items-center justify-center gap-1.5 transition">
+              <span>🔑 + Add Keyring Attachment Loop</span>
+            </button>
+          </div>
+          </div><!-- /cadControls -->
+
+        </div>
+      </section>
+
+      <!-- 3D PREVIEW & BACKEND ORDER SUBMISSION (RIGHT) -->
+      <section class="lg:col-span-7 xl:col-span-8 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col">
+        
+        <!-- PREVIEW HEADER -->
+        <div class="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <h3 class="font-extrabold text-sm text-white flex items-center gap-2">
+              <span>Viewport (Top Plane Facing Front)</span>
+              <span id="modeBadge" class="px-2 py-0.5 rounded text-[10px] font-black bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase">DYNAMIC TEXT</span>
+            </h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="viewTopBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-bold text-slate-300 hover:bg-slate-700">Top View</button>
+            <button id="recenterBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-bold text-slate-300 hover:bg-slate-700">Reset 3D</button>
+          </div>
+        </div>
+
+        <!-- VIEWPORT CANVAS -->
+        <div id="viewport" class="relative viewport-bg h-[420px] sm:h-[480px] lg:h-[520px] w-full">
+          <canvas id="canvas3d" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+          
+          <div class="absolute top-3 left-3 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur border border-slate-800 text-[11px] font-extrabold text-slate-200 pointer-events-none">
+            Build Surface (220 x 220 mm)
+          </div>
+        </div>
+
+        <!-- PRINT METRICS -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-slate-950 border-t border-slate-800 text-xs">
+          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+            <span class="block text-[10px] font-black uppercase text-slate-500">Est. Print Time</span>
+            <strong id="statPrintTime" class="text-emerald-400 font-black text-sm">~14 mins</strong>
+            <span class="block text-[9px] text-slate-500">@ 250 mm/s PLA</span>
+          </div>
+          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+            <span class="block text-[10px] font-black uppercase text-slate-500">PLA Material</span>
+            <strong id="statWeight" class="text-indigo-400 font-black text-sm">~8.5 g</strong>
+            <span id="statCost" class="block text-[9px] text-slate-400">Cost: ~₹12.75</span>
+          </div>
+          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+            <span class="block text-[10px] font-black uppercase text-slate-500">Dimensions</span>
+            <strong id="statDim" class="text-slate-200 font-black text-sm">62 x 28 x 5.6 mm</strong>
+            <span id="statLayers" class="block text-[9px] text-slate-400">28 layers @ 0.2mm</span>
+          </div>
+          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+            <span class="block text-[10px] font-black uppercase text-slate-500">Payment Mode</span>
+            <strong class="text-amber-400 font-black text-sm">💵 Cash on Pickup</strong>
+            <span class="block text-[9px] text-emerald-400 font-bold">Single-colour print</span>
+          </div>
+        </div>
+
+        <!-- ACTION & ORDER BUTTONS -->
+        <div class="p-3 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center gap-2">
+          <button id="openSubmitModalBtn" class="flex-1 min-w-[200px] py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-lg transition">
+            🚀 Submit Keychain for Printing
+          </button>
+          <button id="exportStl" class="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold transition">
+            Download STL
+          </button>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+
+  <!-- MODAL: ORDER SUBMISSION TO SUPABASE -->
+  <div id="submitModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <h3 class="font-black text-sm text-white flex items-center gap-2">
+          <span>Submit Order for Printing</span>
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">PLA Ender-3</span>
+        </h3>
+        <button id="closeSubmitModal" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <form id="orderForm" class="space-y-3">
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">Your Full Name *</label>
+          <input id="custName" type="text" required placeholder="e.g. Alex Morgan" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">Email Address *</label>
+          <input id="custEmail" type="email" required placeholder="alex@example.com" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">Phone Number (For Status SMS/Call)</label>
+          <input id="custPhone" type="tel" placeholder="+91 98765 43210" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
+        </div>
+
+        <!-- CASH PAYMENT NOTICE -->
+        <div class="p-3 bg-slate-950 border border-amber-500/30 rounded-xl space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="font-black text-amber-400 text-xs">💵 Payment Method</span>
+            <span class="text-[10px] font-bold text-slate-400">Cash Only</span>
+          </div>
+          <p class="text-[11px] text-slate-300">Payment is collected in <strong>Cash upon pickup</strong> once your keychain is printed and ready.</p>
+        </div>
+
+        <div id="submitStatusMsg" class="text-xs font-bold hidden p-2 rounded-lg"></div>
+
+        <button type="submit" id="submitOrderBtn" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-black rounded-xl transition">
+          Confirm & Submit Order
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ORDER STATUS TRACKER -->
+  <div id="trackerModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <h3 class="font-black text-sm text-white">Track Your Keychain Order</h3>
+        <button id="closeTrackerModal" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <p class="text-slate-400 text-xs">Enter your email address to check approval, printing, and pickup status for all your orders.</p>
+
+      <div class="flex gap-2">
+        <input id="trackInput" type="email" placeholder="Enter your email address" class="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
+        <button id="searchOrderBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition">Check Status</button>
+      </div>
+
+      <div id="trackerResults" class="space-y-3 min-h-[120px] max-h-[300px] overflow-y-auto">
+        <p class="text-slate-500 italic text-center py-6">Enter your email above to check order progress.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MANAGER PASSWORD AUTHENTICATION -->
+  <div id="adminAuthModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <h3 class="font-black text-sm text-white flex items-center gap-2">
+          <span>🔒 Manager Authentication</span>
+        </h3>
+        <button id="closeAdminAuthModal" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <form id="adminAuthForm" class="space-y-3">
+        <div>
+          <label class="block font-bold text-slate-300 mb-1">Passcode Required</label>
+          <input id="adminPassInput" type="password" required placeholder="Enter manager passcode" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-center tracking-widest font-extrabold outline-none focus:border-indigo-500 text-sm">
+        </div>
+
+        <div id="adminAuthError" class="text-xs font-bold text-rose-400 hidden text-center p-1.5 rounded bg-rose-500/10 border border-rose-500/20">
+          Incorrect passcode. Try again.
+        </div>
+
+        <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl transition text-xs">
+          Unlock Portal
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MANAGER PORTAL & SUPABASE CONFIG -->
+  <div id="adminModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-5 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+        <h3 class="font-black text-sm text-white flex items-center gap-2">
+          <span>Manager Approval Portal</span>
+          <span id="backendStatusTag" class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">Supabase Cloud Connected</span>
+        </h3>
+        <button id="closeAdminModal" class="text-slate-400 hover:text-white font-bold">✕</button>
+      </div>
+
+      <!-- SUPABASE CONFIG COLLAPSIBLE -->
+      <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="font-black text-slate-300 block">Supabase Backend Connection</span>
+          <button id="showSqlSetupBtn" class="text-[11px] text-indigo-400 font-extrabold hover:underline">📋 Show SQL Setup Script for Supabase</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input id="sbUrl" type="text" placeholder="https://your-project.supabase.co" value="https://zhkhgghriaojxzjeirte.supabase.co" class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono text-[11px]">
+          <input id="sbKey" type="password" placeholder="Anon API Key" value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpoa2hnZ2hyaWFvanh6amVpcnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyODM1ODIsImV4cCI6MjEwODg1OTU4Mn0.Fbt5LfMSSNON5hmtHCzCVKFuMI0BaPStTsupDNFbCoY" class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono text-[11px]">
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="saveSbConfig" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition">Connect Cloud Supabase</button>
+          <button id="useLocalModeBtn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs transition">Switch to Local / Testing Mode</button>
+        </div>
+      </div>
+
+      <!-- SQL SETUP SCRIPT MODAL BOX (HIDDEN BY DEFAULT) -->
+      <div id="sqlSetupBox" class="hidden p-3 bg-slate-950 border border-indigo-500/30 rounded-xl space-y-2">
+        <p class="text-slate-300 font-bold text-xs">Run this SQL in your Supabase SQL Editor to create your database table and policies:</p>
+        <textarea id="sqlCodeText" readonly class="w-full h-32 p-2 rounded-lg bg-slate-900 border border-slate-800 text-emerald-400 font-mono text-[10px] select-all leading-relaxed">
+-- 1. Create Orders Table
+create table if not exists keychain_orders (
+  id text primary key,
+  customer_name text not null,
+  customer_email text not null,
+  customer_phone text,
+  pickup_location text default 'Standard Pickup',
+  status text default 'Submitted',
+  stl_url text,
+  specs jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 2. Enable Row Level Security (Public Reads & Inserts for Demo)
+alter table keychain_orders enable row level security;
+create policy "Public insert orders" on keychain_orders for insert with check (true);
+create policy "Public select orders" on keychain_orders for select using (true);
+create policy "Public update orders" on keychain_orders for update using (true);
+        </textarea>
+        <button id="copySqlBtn" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded text-xs font-bold">Copy SQL Script</button>
+      </div>
+
+      <!-- ORDERS LIST FOR MANAGER -->
+      <div id="adminOrdersList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+        <p class="text-slate-500 italic text-center py-6">Loading orders...</p>
+      </div>
+    </div>
+  </div>
+
+<!-- THREE.JS APP & LOGIC -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+
+const $ = id => document.getElementById(id);
+
+// Default Supabase Project Details
+const DEFAULT_SB_URL = 'https://zhkhgghriaojxzjeirte.supabase.co';
+const DEFAULT_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpoa2hnZ2hyaWFvanh6amVpcnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyODM1ODIsImV4cCI6MjEwODg1OTU4Mn0.Fbt5LfMSSNON5hmtHCzCVKFuMI0BaPStTsupDNFbCoY';
+
+// Manager Passcode Configuration
+const MANAGER_PASSCODE = 'CrealityEnder3V3KE';
+let isManagerAuthenticated = false;
+
+// --- SUPABASE & LOCAL BACKEND STATE ---
+let supabase = null;
+let localOrdersStorage = JSON.parse(localStorage.getItem('keychain_orders_local') || '[]');
+
+// Auto-Load Supabase Credentials
+const savedUrl = localStorage.getItem('sb_url') || DEFAULT_SB_URL;
+const savedKey = localStorage.getItem('sb_key') || DEFAULT_SB_KEY;
+
+if (savedUrl && savedKey && window.supabase) {
+  $('sbUrl').value = savedUrl;
+  $('sbKey').value = savedKey;
+  initSupabase(savedUrl, savedKey);
+}
+
+function initSupabase(url, key) {
+  try {
+    supabase = window.supabase.createClient(url, key);
+    $('backendStatusTag').textContent = 'Supabase Cloud Connected';
+    $('backendStatusTag').className = 'text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30';
+  } catch (err) {
+    console.warn('Failed to connect Supabase, reverting to local mode:', err);
+    supabase = null;
+  }
+}
+
+// --- THREE.JS VIEWPORT SETUP ---
+const canvas = $('canvas3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = null;
+
+// Camera Position: Top Plane Facing Front
+const camera = new THREE.PerspectiveCamera(40, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+camera.position.set(0, -95, 120);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 0, 5);
+
+// Lights
+scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 1.8));
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
+dirLight.position.set(-30, -50, 100);
+scene.add(dirLight);
+
+// Ender-3 V3 KE Build Bed Grid
+const bedGroup = new THREE.Group();
+const bedGrid = new THREE.GridHelper(220, 22, 0x6366f1, 0x334155);
+bedGrid.rotation.x = Math.PI / 2;
+bedGrid.position.z = -0.1;
+bedGroup.add(bedGrid);
+
+const bedPlate = new THREE.Mesh(
+  new THREE.PlaneGeometry(220, 220),
+  new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8, side: THREE.DoubleSide })
+);
+bedPlate.position.z = -0.2;
+bedGroup.add(bedPlate);
+scene.add(bedGroup);
+
+const designGroup = new THREE.Group();
+const cadMeshGroup = new THREE.Group();
+scene.add(designGroup);
+
+// Materials
+const matBase = new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.4, metalness: 0.1 });
+const matText = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.3, metalness: 0.1 });
+const matHole = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.6, transparent: true, opacity: 0.7 });
+
+// Viewport Transform Gizmos
+const transformControls = new TransformControls(camera, renderer.domElement);
+transformControls.size = 0.75;
+scene.add(transformControls);
+
+transformControls.addEventListener('dragging-changed', (event) => {
+  controls.enabled = !event.value;
+  if (!event.value) {
+    if (selectedExtraIndex >= 0 && cadMeshGroup.children[selectedExtraIndex]) {
+      const targetMesh = cadMeshGroup.children[selectedExtraIndex];
+      const targetExtra = extras[selectedExtraIndex];
+      if (targetExtra && targetMesh) {
+        targetExtra.x = Math.round(targetMesh.position.x);
+        targetExtra.y = Math.round(targetMesh.position.y);
+        targetExtra.z = Math.round(targetMesh.position.z - Number($('baseThick').value) / 2);
+        targetExtra.rotZ = targetMesh.rotation.z;
+        populateInspector(targetExtra);
+      }
+    }
+  }
+});
+
+$('saveSbConfig').addEventListener('click', () => {
+  const url = $('sbUrl').value.trim();
+  const key = $('sbKey').value.trim();
+  if (url && key) {
+    localStorage.setItem('sb_url', url);
+    localStorage.setItem('sb_key', key);
+    initSupabase(url, key);
+    loadAdminOrders();
+  }
+});
+
+$('useLocalModeBtn').addEventListener('click', () => {
+  supabase = null;
+  localStorage.removeItem('sb_url');
+  localStorage.removeItem('sb_key');
+  $('sbUrl').value = '';
+  $('sbKey').value = '';
+  $('backendStatusTag').textContent = 'Mock / Local Storage Mode';
+  $('backendStatusTag').className = 'text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30';
+  loadAdminOrders();
+});
+
+$('showSqlSetupBtn').addEventListener('click', () => {
+  $('sqlSetupBox').classList.toggle('hidden');
+});
+
+$('copySqlBtn').addEventListener('click', () => {
+  const text = $('sqlCodeText').value;
+  navigator.clipboard.writeText(text);
+  $('copySqlBtn').textContent = 'Copied to Clipboard!';
+  setTimeout(() => { $('copySqlBtn').textContent = 'Copy SQL Script'; }, 2000);
+});
+
+// Raycaster for Direct Viewport Selection
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+canvas.addEventListener('pointerdown', (event) => {
+  if (transformControls.dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / canvas.clientWidth) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / canvas.clientHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(cadMeshGroup.children, true);
+
+  if (intersects.length > 0) {
+    const hitMesh = intersects[0].object;
+    if (hitMesh.userData && hitMesh.userData.extraIndex !== undefined) {
+      selectedExtraIndex = hitMesh.userData.extraIndex;
+      populateInspector(extras[selectedExtraIndex]);
+      transformControls.attach(hitMesh);
+      updateObjectsUI();
+    }
+  }
+});
+
+// Helpers
+function roundedShape(w, h, r) {
+  const s = new THREE.Shape();
+  r = Math.min(r, w / 2, h / 2);
+  s.moveTo(-w / 2 + r, -h / 2);
+  s.lineTo(w / 2 - r, -h / 2);
+  s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+  s.lineTo(w / 2, h / 2 - r);
+  s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+  s.lineTo(-w / 2 + r, h / 2);
+  s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+  s.lineTo(-w / 2, -h / 2 + r);
+  s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+  return s;
+}
+
+function extrude(shape, depth, z = 0, material = matBase) {
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelSegments: 3,
+    steps: 1,
+    bevelSize: Math.min(0.25, depth / 8),
+    bevelThickness: Math.min(0.25, depth / 8),
+    curveSegments: 32
+  });
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, material);
+  m.position.z = z;
+  return m;
+}
+
+// Gizmo mode switchers
+$('gizmoTranslate').addEventListener('click', () => { transformControls.setMode('translate'); updateGizmoUI('Move (W)'); });
+$('gizmoRotate').addEventListener('click', () => { transformControls.setMode('rotate'); updateGizmoUI('Rotate (E)'); });
+$('gizmoScale').addEventListener('click', () => { transformControls.setMode('scale'); updateGizmoUI('Scale (R)'); });
+
+function updateGizmoUI(modeText) {
+  $('gizmoStatus').textContent = `Gizmo: ${modeText}`;
+  ['gizmoTranslate', 'gizmoRotate', 'gizmoScale'].forEach(id => {
+    $(id).className = $(id).textContent.includes(modeText.split(' ')[0])
+      ? 'py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-[11px] shadow'
+      : 'py-1.5 rounded-lg bg-slate-800 text-slate-300 font-bold text-[11px] hover:bg-slate-700';
+  });
+}
+
+// Mode Tabs
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    currentMode = tab.dataset.mode;
+    document.querySelectorAll('.mode-tab').forEach(t => {
+      const active = t === tab;
+      t.className = `mode-tab px-2 py-2 rounded-xl border font-extrabold flex flex-col items-center gap-1 transition ${
+        active ? 'border-indigo-500/40 bg-indigo-600/20 text-indigo-300' : 'border-slate-800 bg-slate-900 text-slate-400 hover:bg-slate-800'
+      }`;
+    });
+    $('textControls').classList.toggle('hidden', currentMode !== 'text');
+    $('imageControls').classList.toggle('hidden', currentMode !== 'image');
+    $('thingiverseControls').classList.toggle('hidden', currentMode !== 'thingiverse');
+    $('cadControls').classList.toggle('hidden', currentMode === 'thingiverse');
+    $('modeBadge').textContent = currentMode === 'text' ? 'DYNAMIC TEXT' : currentMode === 'image' ? 'SVG / IMAGE' : currentMode === 'thingiverse' ? 'THINGIVERSE' : 'CAD STUDIO';
+    if (currentMode !== 'thingiverse') buildModel();
+  });
+});
+
+// Load Font for 3D Text
+const fontLoader = new FontLoader();
+fontLoader.load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', (font) => {
+  loadedFont = font;
+  buildModel();
+});
+
+// Render Loop & Resize Observer
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+function onWindowResize() {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(onWindowResize).observe(canvas);
+
+// Inspector Helper
+function populateInspector(extra) {
+  $('objectEditor').classList.remove('hidden');
+  $('selectedShapeName').textContent = extra.name || extra.type;
+  $('isHoleToggle').checked = !!extra.isHole;
+  $('shapeEditW').value = extra.w || 12;
+  $('shapeEditH').value = extra.h || 4;
+  $('shapeEditX').value = extra.x || 0;
+  $('shapeEditY').value = extra.y || 0;
+  $('shapeEditZ').value = extra.z || 0;
+  if ($('shapeEditRotZ')) {
+    $('shapeEditRotZ').value = Math.round((extra.rotZ || 0) * (180 / Math.PI));
+  }
+
+  if (extra.type === '3dtext') {
+    $('textPrimInputGroup').classList.remove('hidden');
+    $('primTextVal').value = extra.textVal || '3D';
+    $('primTextVal').oninput = (e) => { extra.textVal = e.target.value; buildModel(); };
+  } else {
+    $('textPrimInputGroup').classList.add('hidden');
+  }
+}
+
+// Bind numeric inputs in object editor
+['shapeEditW', 'shapeEditH', 'shapeEditX', 'shapeEditY', 'shapeEditZ', 'shapeEditRotZ'].forEach(id => {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    if (selectedExtraIndex >= 0 && extras[selectedExtraIndex]) {
+      const e = extras[selectedExtraIndex];
+      e.w = Number($('shapeEditW').value) || 10;
+      e.h = Number($('shapeEditH').value) || 4;
+      e.x = Number($('shapeEditX').value) || 0;
+      e.y = Number($('shapeEditY').value) || 0;
+      e.z = Number($('shapeEditZ').value) || 0;
+      if ($('shapeEditRotZ')) {
+        e.rotZ = (Number($('shapeEditRotZ').value) || 0) * (Math.PI / 180);
+      }
+      buildModel();
+    }
+  });
+});
+
+// --- State ---
+let currentMode = 'text';
+let selectedThingiverseModel = null;
+let imageData = null;
+let parsedSvgPaths = [];
+let extras = [
+  { type: 'loop', name: 'Keyring Loop', x: -28, y: 0, z: 0, w: 10, h: 4, isHole: false }
+];
+let selectedExtraIndex = 0;
+let loadedFont = null;
+
+function processImageToReliefGrid(img, targetWidthMm, threshold) {
+  const canvas2 = document.createElement('canvas');
+  const res = 128;
+  canvas2.width = res;
+  canvas2.height = res;
+  const ctx = canvas2.getContext('2d');
+  ctx.drawImage(img, 0, 0, res, res);
+  const imgData = ctx.getImageData(0, 0, res, res);
+  const data = imgData.data;
+
+  const grid = [];
+  for (let y = 0; y < res; y++) {
+    const row = [];
+    for (let x = 0; x < res; x++) {
+      const idx = (y * res + x) * 4;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const a = data[idx + 3];
+
+      const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+      const isFeature = (a > 30) && (brightness < threshold);
+      row.push(isFeature ? 1 : 0);
+    }
+    grid.push(row);
+  }
+  return { grid, res };
+}
+
+function getShapeArea(shape) {
+  const pts = shape.getPoints();
+  let area = 0;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    area += (pts[j].x + pts[i].x) * (pts[j].y - pts[i].y);
+  }
+  return Math.abs(area / 2);
+}
+
+function extrudeOptimized(shape, depth, z = 0, material = matBase, curveSegs = 16) {
+  const pointsCount = shape.getPoints().length;
+  const isHighDensity = pointsCount > 150;
+  
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: !isHighDensity,
+    bevelSegments: isHighDensity ? 0 : 2,
+    steps: 1,
+    bevelSize: Math.min(0.2, depth / 8),
+    bevelThickness: Math.min(0.2, depth / 8),
+    curveSegments: isHighDensity ? 8 : curveSegs
+  });
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, material);
+  m.position.z = z;
+  return m;
+}
+
+// Master Build Function
+function buildModel() {
+  // Keep the current 3D preview intact while the user browses Thingiverse.
+  if (currentMode === 'thingiverse') return;
+  while (designGroup.children.length) {
+    const child = designGroup.children[0];
+    if (child === cadMeshGroup) { designGroup.remove(cadMeshGroup); continue; }
+    child.geometry?.dispose();
+    designGroup.remove(child);
+  }
+  while (cadMeshGroup.children.length) {
+    const c = cadMeshGroup.children.pop();
+    c.geometry?.dispose();
+  }
+  designGroup.add(cadMeshGroup);
+
+  const bt = Number($('baseThick').value);
+
+  let totalWidth = 50, totalHeight = 25;
+
+  if (currentMode === 'text') {
+    const textStr = ($('word').value || 'ETHAN').trim();
+    const fontSize = Number($('fontSize').value) || 10;
+    const padding = Number($('textPadding').value) || 4;
+    const textHeightVal = Number($('textHeight').value);
+
+    let textW = textStr.length * (fontSize * 0.7);
+    let textH = fontSize * 1.2;
+
+    if (loadedFont && textStr) {
+      const tGeo = new TextGeometry(textStr, { font: loadedFont, size: fontSize, height: textHeightVal });
+      tGeo.computeBoundingBox();
+      textW = tGeo.boundingBox.max.x - tGeo.boundingBox.min.x;
+      textH = tGeo.boundingBox.max.y - tGeo.boundingBox.min.y;
+    }
+
+    const manualW = Number($('manualBaseW').value);
+    const manualH = Number($('manualBaseH').value);
+
+    totalWidth = manualW > 0 ? manualW : textW + padding * 2;
+    totalHeight = manualH > 0 ? manualH : textH + padding * 2;
+
+    const baseStyle = $('baseStyle').value;
+    let baseShape = roundedShape(totalWidth, totalHeight, Math.min(8, totalHeight / 2));
+
+    if (baseStyle !== 'none') {
+      const baseMesh = extrude(baseShape, bt, 0, matBase);
+      designGroup.add(baseMesh);
+    }
+
+    if (loadedFont && textStr) {
+      const tGeo = new TextGeometry(textStr, {
+        font: loadedFont, size: fontSize, height: textHeightVal,
+        curveSegments: 32, bevelEnabled: true, bevelThickness: 0.2, bevelSize: 0.15, bevelSegments: 3
+      });
+      tGeo.computeBoundingBox();
+      const offsetX = -(tGeo.boundingBox.max.x - tGeo.boundingBox.min.x) / 2;
+      const offsetY = -(tGeo.boundingBox.max.y - tGeo.boundingBox.min.y) / 2;
+
+      const textMesh = new THREE.Mesh(tGeo, matText);
+      textMesh.position.set(offsetX, offsetY, bt);
+      designGroup.add(textMesh);
+    }
+
+  } else if (currentMode === 'image') {
+    const targetW = Number($('imageSize').value) || 50;
+    const detailH = Number($('reliefHeight').value) || 1.6;
+    const svgTreatment = $('svgMode').value;
+    const svgBaseStyle = $('svgBaseStyle').value;
+    const simplLvl = Number($('svgSimplification')?.value || 3);
+    const threshold = Number($('contrastThreshold')?.value || 128);
+
+    const manualW = Number($('manualBaseW').value);
+    const manualH = Number($('manualBaseH').value);
+
+    totalWidth = manualW > 0 ? manualW : targetW;
+    totalHeight = manualH > 0 ? manualH : targetW;
+
+    if (parsedSvgPaths && parsedSvgPaths.length > 0) {
+      let allExtrudedShapes = [];
+      const maxPathsToProcess = Math.min(parsedSvgPaths.length, 120);
+
+      for (let i = 0; i < maxPathsToProcess; i++) {
+        const path = parsedSvgPaths[i];
+        try {
+          const shapes = SVGLoader.createShapes(path);
+          shapes.forEach((s) => {
+            const area = getShapeArea(s);
+            if (area > 0.05) {
+              allExtrudedShapes.push({ shape: s, color: path.color, area });
+            }
+          });
+        } catch (err) {
+          console.warn('Skipped complex path segment:', err);
+        }
+      }
+
+      if (allExtrudedShapes.length > 0) {
+        allExtrudedShapes.sort((a, b) => b.area - a.area);
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        const ptsResolution = Math.max(8, 36 - simplLvl * 6);
+
+        allExtrudedShapes.forEach(item => {
+          const pts = item.shape.getPoints(ptsResolution);
+          pts.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+          });
+        });
+
+        const rawW = maxX - minX || 1;
+        const rawH = maxY - minY || 1;
+        const scale = totalWidth / rawW;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        totalHeight = manualH > 0 ? manualH : rawH * scale;
+
+        if (svgBaseStyle === 'rounded' || svgBaseStyle === 'circle') {
+          let bShape = svgBaseStyle === 'circle'
+            ? new THREE.Shape()
+            : roundedShape(totalWidth + 6, totalHeight + 6, 6);
+
+          if (svgBaseStyle === 'circle') {
+            bShape.absarc(0, 0, Math.max(totalWidth, totalHeight) / 2 + 4, 0, Math.PI * 2, false);
+          }
+          designGroup.add(extrude(bShape, bt, 0, matBase));
+        }
+
+        allExtrudedShapes.forEach((item, idx) => {
+          const isOuter = (idx === 0);
+          let extrudeHeight = detailH;
+          let zPos = bt;
+          let material = matText;
+
+          if (isOuter && svgBaseStyle === 'svg') {
+            extrudeHeight = bt;
+            zPos = 0;
+            material = matBase;
+          } else {
+            if (svgTreatment === 'relief') {
+              extrudeHeight = detailH;
+              zPos = bt;
+              material = matText;
+            } else if (svgTreatment === 'engraved') {
+              extrudeHeight = detailH;
+              zPos = Math.max(0.4, bt - detailH);
+              material = matHole;
+            } else {
+              extrudeHeight = bt + detailH;
+              zPos = 0;
+              material = matText;
+            }
+          }
+
+          if (!(isOuter && svgBaseStyle !== 'svg')) {
+            try {
+              const mesh = extrudeOptimized(item.shape, extrudeHeight, zPos, material, ptsResolution);
+              mesh.scale.set(scale, -scale, 1);
+              mesh.position.x = -centerX * scale;
+              mesh.position.y = centerY * scale;
+              mesh.updateMatrix();
+              designGroup.add(mesh);
+            } catch (err) {
+              console.warn('Mesh build fallback skipped invalid polygon geometry');
+            }
+          }
+        });
+      }
+
+    } else if (imageData) {
+      const baseShape = roundedShape(totalWidth, totalHeight, 6);
+      if (svgBaseStyle !== 'none') {
+        designGroup.add(extrude(baseShape, bt, 0, matBase));
+      }
+
+      const { grid, res } = processImageToReliefGrid(imageData, totalWidth, threshold);
+      const cellW = totalWidth / res;
+      const cellH = totalHeight / res;
+
+      const boxGeo = new THREE.BoxGeometry(cellW * 1.1, cellH * 1.1, detailH);
+      const instancedMesh = new THREE.InstancedMesh(boxGeo, matText, res * res);
+      let count = 0;
+      const matrix = new THREE.Matrix4();
+
+      for (let y = 0; y < res; y += 1) {
+        for (let x = 0; x < res; x += 1) {
+          if (grid[y][x] === 1) {
+            const posX = (x - res / 2) * cellW + cellW / 2;
+            const posY = (res / 2 - y) * cellH - cellH / 2;
+            const posZ = bt + detailH / 2;
+
+            matrix.setPosition(posX, posY, posZ);
+            instancedMesh.setMatrixAt(count++, matrix);
+          }
+        }
+      }
+
+      instancedMesh.count = count;
+      instancedMesh.instanceMatrix.needsUpdate = true;
+      designGroup.add(instancedMesh);
+
+    } else {
+      const baseShape = roundedShape(totalWidth, totalHeight, 8);
+      designGroup.add(extrude(baseShape, bt, 0, matBase));
+    }
+  }
+
+  // Render Interactive CAD Extras & Loops
+  extras.forEach((e, i) => {
+    let geo;
+    const mat = e.isHole ? matHole : matBase;
+    const h = e.h || 4;
+
+    if (e.type === 'cylinder') {
+      geo = new THREE.CylinderGeometry(e.w / 2, e.w / 2, h, 48);
+    } else if (e.type === 'sphere') {
+      geo = new THREE.SphereGeometry(e.w / 2, 32, 24);
+    } else if (e.type === 'torus' || e.type === 'loop') {
+      geo = new THREE.TorusGeometry(e.w / 2, 1.8, 24, 48);
+    } else if (e.type === '3dtext' && loadedFont) {
+      geo = new TextGeometry(e.textVal || '3D', { font: loadedFont, size: e.w / 2, height: h, curveSegments: 24 });
+    } else if (e.importedMesh) {
+      geo = e.importedMesh.geometry.clone();
+    } else {
+      geo = new THREE.BoxGeometry(e.w, e.w * 0.8, h);
+    }
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(e.x, e.y, (e.z || 0) + bt / 2);
+
+    if (e.type === 'cylinder') {
+      mesh.rotation.set((e.rotX || 0) + Math.PI / 2, e.rotY || 0, e.rotZ || 0);
+    } else {
+      mesh.rotation.set(e.rotX || 0, e.rotY || 0, e.rotZ || 0);
+    }
+
+    mesh.userData = { extraIndex: i };
+    cadMeshGroup.add(mesh);
+
+    if (i === selectedExtraIndex) {
+      transformControls.attach(mesh);
+    }
+  });
+
+  const totalVolumeCm3 = (totalWidth * totalHeight * (bt + 1.6)) / 1000;
+  const filamentWeightG = (totalVolumeCm3 * 1.24).toFixed(1);
+  const printTimeMins = Math.max(6, Math.round(filamentWeightG * 1.6));
+  const layerCount = Math.round((bt + 1.6) / 0.2);
+
+  const costInInr = (filamentWeightG * 1.5).toFixed(2);
+
+  $('statDim').textContent = `${Math.round(totalWidth)} x ${Math.round(totalHeight)} x ${(bt + 1.6).toFixed(1)} mm`;
+  $('statWeight').textContent = `~${filamentWeightG} g PLA`;
+  $('statCost').textContent = `Cost: ~₹${costInInr}`;
+  $('statPrintTime').textContent = `~${printTimeMins} mins`;
+  $('statLayers').textContent = `${layerCount} layers @ 0.2mm`;
+
+  bedGroup.visible = $('showBed').checked;
+  updateObjectsUI();
+}
+
+function generateExportableBinary() {
+  transformControls.detach();
+  buildModel();
+
+  const exportScene = new THREE.Scene();
+  const exportGroup = designGroup.clone(true);
+  
+  exportGroup.traverse((child) => {
+    if (child.isMesh) {
+      child.updateMatrixWorld(true);
+    }
+  });
+
+  exportScene.add(exportGroup);
+
+  const exporter = new STLExporter();
+  const binaryResult = exporter.parse(exportScene, { binary: true });
+
+  if (selectedExtraIndex >= 0 && cadMeshGroup.children[selectedExtraIndex]) {
+    transformControls.attach(cadMeshGroup.children[selectedExtraIndex]);
+  }
+
+  return binaryResult;
+}
+
+$('dropZone').addEventListener('click', () => $('imageFile').click());
+$('imageFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (file.type === 'image/svg+xml' || file.name.endsWith('.svg')) {
+    imageData = null;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const loader = new SVGLoader();
+        const svgData = loader.parse(evt.target.result);
+        parsedSvgPaths = svgData.paths;
+        buildModel();
+      } catch (err) {
+        alert("The uploaded SVG contains complex or invalid vector paths.");
+      }
+    };
+    reader.readAsText(file);
+  } else {
+    parsedSvgPaths = [];
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { imageData = img; buildModel(); URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+});
+
+['word', 'fontSize', 'textPadding', 'baseStyle', 'textHeight', 'manualBaseW', 'manualBaseH', 'imageSize', 'reliefHeight', 'contrastThreshold', 'svgMode', 'svgBaseStyle', 'svgSimplification', 'baseThick', 'showBed'].forEach((id) => {
+  const el = $(id);
+  if (el) {
+    el.addEventListener('input', () => {
+      if (id === 'textHeight') $('textHeightVal').textContent = $('textHeight').value + ' mm';
+      if (id === 'contrastThreshold') {
+        const val = Number($('contrastThreshold').value);
+        $('contrastThresholdVal').textContent = `${val} (${val < 90 ? 'High Contrast' : val > 160 ? 'Detailed' : 'Medium'})`;
+      }
+      if (id === 'svgSimplification') {
+        const labels = ['High Quality', 'Detailed', 'Balanced', 'Fast', 'Low Density'];
+        $('svgSimplificationVal').textContent = labels[Number($('svgSimplification').value) - 1] || 'Balanced';
+      }
+      buildModel();
+    });
+  }
+});
+
+$('addQuickLoopBtn').addEventListener('click', () => {
+  extras.push({ type: 'loop', name: 'Keyring Attachment Loop', x: -30, y: 0, z: 0, w: 12, h: 4, isHole: false });
+  selectedExtraIndex = extras.length - 1;
+  populateInspector(extras[selectedExtraIndex]);
+  buildModel();
+});
+
+$('recenterBtn').addEventListener('click', () => { camera.position.set(0, -95, 120); controls.target.set(0, 0, 5); });
+$('viewTopBtn').addEventListener('click', () => { camera.position.set(0, 0, 150); controls.target.set(0, 0, 0); });
+
+$('addShape').addEventListener('click', () => {
+  const type = $('shapeType').value;
+  extras.push({ type, name: type.toUpperCase(), x: 0, y: 0, z: 0, w: 14, h: 4, isHole: false, textVal: '3D' });
+  selectedExtraIndex = extras.length - 1;
+  populateInspector(extras[selectedExtraIndex]);
+  buildModel();
+});
+
+function updateObjectsUI() {
+  const list = $('objectList');
+  list.innerHTML = '';
+  if (!extras.length) {
+    list.innerHTML = '<span class="text-slate-500 italic p-1">No custom CAD primitives added yet.</span>';
+    $('objectEditor').classList.add('hidden');
+    transformControls.detach();
+    return;
+  }
+  extras.forEach((e, i) => {
+    const btn = document.createElement('button');
+    btn.className = `px-2 py-1 rounded text-[11px] font-bold border transition ${
+      i === selectedExtraIndex ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-800'
+    } ${e.isHole ? 'border-rose-500 text-rose-300' : ''}`;
+    btn.textContent = `${e.isHole ? '✂ ' : ''}${e.name || e.type}`;
+    btn.onclick = () => {
+      selectedExtraIndex = i;
+      populateInspector(extras[i]);
+      buildModel();
+    };
+    list.appendChild(btn);
+  });
+}
+
+$('isHoleToggle').addEventListener('change', (e) => {
+  if (selectedExtraIndex >= 0) { extras[selectedExtraIndex].isHole = e.target.checked; buildModel(); }
+});
+$('deleteObj').addEventListener('click', () => {
+  if (selectedExtraIndex >= 0) {
+    extras.splice(selectedExtraIndex, 1);
+    selectedExtraIndex = -1;
+    transformControls.detach();
+    $('objectEditor').classList.add('hidden');
+    buildModel();
+  }
+});
+
+// --- THINGIVERSE BROWSER (TOKEN STAYS IN NETLIFY FUNCTION) ---
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function getThingiverseItems(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.hits)) return payload.hits;
+  if (Array.isArray(payload?.things)) return payload.things;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
+}
+
+function thingiverseModelFromApi(item) {
+  const id = item.id ?? item.thing_id ?? item.public_id;
+  if (!id) return null;
+  const creator = item.creator?.name || item.creator?.username || item.creator?.full_name || item.username || 'Unknown creator';
+  const url = item.public_url || item.url || `https://www.thingiverse.com/thing:${encodeURIComponent(id)}`;
+  const safeUrl = /^https:\/\/www\.thingiverse\.com\//i.test(url) ? url : `https://www.thingiverse.com/thing:${encodeURIComponent(id)}`;
+  const thumbnailCandidate = typeof item.thumbnail === 'string' ? item.thumbnail : (item.thumbnail?.url || item.thumbnail_url || item.preview_image || item.default_image?.url || '');
+  const thumbnail = /^https:\/\/cdn\.thingiverse\.com\//i.test(thumbnailCandidate) ? thumbnailCandidate : '';
+  const license = item.license?.name || item.license_name || (typeof item.license === 'string' ? item.license : '') || 'Licence not provided in search results';
+  return {
+    id: String(id),
+    name: item.name || item.title || `Thingiverse model ${id}`,
+    creator,
+    thumbnail,
+    url: safeUrl,
+    license
+  };
+}
+
+async function searchThingiverse(query) {
+  const status = $('thingiverseStatus');
+  const results = $('thingiverseResults');
+  const btn = $('thingiverseSearchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Searching…';
+  status.textContent = 'Searching Thingiverse…';
+  results.innerHTML = '';
+  try {
+    const params = new URLSearchParams({ query, sort: $('thingiverseSort').value });
+    const response = await fetch(`/.netlify/functions/thingiverse?${params.toString()}`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || `Search failed (${response.status})`);
+    const items = getThingiverseItems(payload).map(thingiverseModelFromApi).filter(Boolean);
+    if (!items.length) {
+      status.textContent = 'No models found. Try a different search phrase.';
+      return;
+    }
+    status.textContent = `Found ${items.length} model${items.length === 1 ? '' : 's'}. Select one to inspect it.`;
+    results.innerHTML = items.map(model => `
+      <article class="overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+        <div class="aspect-[4/3] bg-slate-900 flex items-center justify-center overflow-hidden">
+          ${model.thumbnail ? `<img src="${escapeHtml(model.thumbnail)}" alt="" loading="lazy" class="w-full h-full object-cover">` : '<span class="text-slate-500 text-3xl">⬡</span>'}
+        </div>
+        <div class="p-2.5 space-y-1.5">
+          <h4 class="text-[11px] leading-snug text-white font-black">${escapeHtml(model.name)}</h4>
+          <p class="text-[9px] text-slate-400">By ${escapeHtml(model.creator)}</p>
+          <button type="button" data-thingiverse-id="${escapeHtml(model.id)}" class="thingiverse-select-btn w-full py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-200 font-bold text-[10px]">View model details</button>
+        </div>
+      </article>`).join('');
+    results.querySelectorAll('.thingiverse-select-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        const chosen = items.find(model => model.id === button.dataset.thingiverseId);
+        if (chosen) selectThingiverseModel(chosen);
+      });
+    });
+  } catch (error) {
+    console.error('Thingiverse search error:', error);
+    status.textContent = error.message || 'Could not search Thingiverse. Please try again.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Search';
+  }
+}
+
+async function selectThingiverseModel(model) {
+  const selected = $('thingiverseSelected');
+  selected.classList.remove('hidden');
+  $('thingiverseSelectedName').textContent = model.name;
+  $('thingiverseSelectedMeta').textContent = `Thingiverse ID: ${model.id} • Creator: ${model.creator}`;
+  $('thingiverseSelectedLicense').textContent = `Licence: ${model.license}`;
+  $('thingiverseSelectedLink').href = model.url;
+  $('thingiverseStatus').textContent = 'Loading model details and licence…';
+  selectedThingiverseModel = model;
+  try {
+    const response = await fetch(`/.netlify/functions/thingiverse?id=${encodeURIComponent(model.id)}`);
+    const detail = await response.json();
+    if (response.ok) {
+      const creator = detail.creator?.name || detail.creator?.username || model.creator;
+      const licence = detail.license?.name || detail.license || detail.license_name || model.license;
+      const detailUrl = detail.public_url || detail.url || model.url;
+      selectedThingiverseModel = { ...model, creator, license: typeof licence === 'string' ? licence : model.license, url: /^https:\/\/www\.thingiverse\.com\//i.test(detailUrl) ? detailUrl : model.url };
+      $('thingiverseSelectedMeta').textContent = `Thingiverse ID: ${model.id} • Creator: ${creator}`;
+      $('thingiverseSelectedLicense').textContent = `Licence: ${selectedThingiverseModel.license}`;
+      $('thingiverseSelectedLink').href = selectedThingiverseModel.url;
+      $('thingiverseStatus').textContent = 'Model details loaded. Check the licence before submitting.';
+    } else {
+      $('thingiverseStatus').textContent = 'Model selected; full details could not be loaded. Manager review is required.';
+    }
+  } catch (error) {
+    $('thingiverseStatus').textContent = 'Model selected; full details could not be loaded. Manager review is required.';
+  }
+}
+
+$('thingiverseSearchForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const query = $('thingiverseQuery').value.trim();
+  if (query) searchThingiverse(query);
+});
+$('clearThingiverseSelection').addEventListener('click', () => {
+  selectedThingiverseModel = null;
+  $('thingiverseSelected').classList.add('hidden');
+});
+$('useThingiverseModelBtn').addEventListener('click', () => {
+  if (!selectedThingiverseModel) return;
+  $('submitModal').classList.remove('hidden');
+  $('submitModal').querySelector('h3 span').textContent = 'Submit Thingiverse Model';
+});
+
+// --- SUBMISSION & SUPABASE BACKEND INTEGRATION ---
+$('openSubmitModalBtn').addEventListener('click', () => {
+  $('submitModal').classList.remove('hidden');
+  $('submitModal').querySelector('h3 span').textContent = selectedThingiverseModel ? 'Submit Thingiverse Model' : 'Submit Order for Printing';
+});
+$('closeSubmitModal').addEventListener('click', () => $('submitModal').classList.add('hidden'));
+
+$('orderForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('submitOrderBtn');
+  const msg = $('submitStatusMsg');
+  btn.disabled = true;
+  btn.textContent = 'Generating STL & Submitting...';
+  msg.classList.add('hidden');
+
+  const orderId = 'KEY-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+  const filename = `${orderId}.stl`;
+  const thingiverseOrder = currentMode === 'thingiverse' && selectedThingiverseModel ? {
+    id: selectedThingiverseModel.id,
+    name: selectedThingiverseModel.name,
+    creator: selectedThingiverseModel.creator,
+    license: selectedThingiverseModel.license,
+    url: selectedThingiverseModel.url,
+    review_required: true
+  } : null;
+  
+  const orderRecord = {
+    id: orderId,
+    customer_name: $('custName').value,
+    customer_email: $('custEmail').value.toLowerCase().trim(),
+    customer_phone: $('custPhone').value,
+    pickup_location: 'Standard Pickup',
+    status: 'Submitted',
+    stl_url: thingiverseOrder ? null : filename,
+    specs: { text: $('word').value, thickness: $('baseThick').value, payment: 'Cash on Pickup', ...(thingiverseOrder ? { thingiverse: thingiverseOrder } : {}) },
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    const stlBinary = thingiverseOrder ? null : generateExportableBinary();
+
+    if (supabase) {
+      if (stlBinary) {
+        try {
+          await supabase.storage
+            .from('keychain-stls')
+            .upload(filename, new Blob([stlBinary]), { contentType: 'application/octet-stream', upsert: true });
+        } catch (stgErr) {
+          console.warn('Storage bucket upload notice:', stgErr);
+        }
+      }
+
+      const { error: dbErr } = await supabase.from('keychain_orders').insert([orderRecord]);
+      if (dbErr) throw dbErr;
+    } else {
+      localOrdersStorage.unshift(orderRecord);
+      localStorage.setItem('keychain_orders_local', JSON.stringify(localOrdersStorage));
+    }
+
+    msg.className = 'text-xs font-bold p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+    msg.innerHTML = `Order Placed! Order ID: <strong>${orderId}</strong><br>${thingiverseOrder ? 'Thingiverse model sent for manager review.' : 'Your custom STL was submitted.'}<br>Check status anytime using your email: <strong>${escapeHtml($('custEmail').value)}</strong>.<br>Payment: 💵 Cash on Pickup.`;
+    msg.classList.remove('hidden');
+    selectedThingiverseModel = null;
+    $('thingiverseSelected').classList.add('hidden');
+
+  } catch (err) {
+    console.error('Order submission error:', err);
+    msg.className = 'text-xs font-bold p-2.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30';
+    msg.innerHTML = `Order saved to local storage! Order ID: <strong>${orderId}</strong>.<br>Check status anytime using your email address.`;
+    msg.classList.remove('hidden');
+    localOrdersStorage.unshift(orderRecord);
+    localStorage.setItem('keychain_orders_local', JSON.stringify(localOrdersStorage));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Confirm & Submit Order';
+  }
+});
+
+// --- TRACKER MODAL ---
+$('trackOrderBtn').addEventListener('click', () => $('trackerModal').classList.remove('hidden'));
+$('closeTrackerModal').addEventListener('click', () => $('trackerModal').classList.add('hidden'));
+
+$('searchOrderBtn').addEventListener('click', async () => {
+  const email = $('trackInput').value.trim().toLowerCase();
+  const res = $('trackerResults');
+  if (!email) return;
+
+  res.innerHTML = '<p class="text-slate-400 italic text-center py-4">Searching orders...</p>';
+
+  let matches = [];
+
+  if (supabase) {
+    const { data } = await supabase.from('keychain_orders')
+      .select('*')
+      .ilike('customer_email', email);
+    if (data) matches = data;
+  } else {
+    matches = localOrdersStorage.filter(o => 
+      o.customer_email.toLowerCase() === email
+    );
+  }
+
+  if (matches.length) {
+    res.innerHTML = matches.map(o => `
+      <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
+        <div class="flex items-center justify-between">
+          <span class="font-black text-indigo-400">${o.id}</span>
+          <span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold ${
+            o.status === 'Rejected' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+            o.status === 'Picked Up' ? 'bg-slate-700 text-slate-300 border border-slate-600' :
+            o.status === 'Ready for Pickup' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+            o.status === 'Printing' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+            o.status === 'Approved' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' :
+            'bg-slate-800 text-slate-300 border border-slate-700'
+          }">${o.status}</span>
+        </div>
+        <div class="flex items-center justify-between text-slate-300 font-bold text-[11px]">
+          <span>Customer: ${o.customer_name}</span>
+          <span class="text-amber-400">💵 Cash on Pickup</span>
+        </div>
+        <p class="text-[10px] text-slate-500">Ordered: ${new Date(o.created_at || Date.now()).toLocaleDateString()}</p>
+      </div>
+    `).join('');
+  } else {
+    res.innerHTML = '<p class="text-slate-400 text-center py-4">No orders found for this email address. Please make sure you entered the email used during checkout.</p>';
+  }
+});
+
+// --- ADMIN MANAGER PORTAL & AUTHENTICATION ---
+$('adminBtn').addEventListener('click', () => {
+  if (isManagerAuthenticated) {
+    $('adminModal').classList.remove('hidden');
+    loadAdminOrders();
+  } else {
+    $('adminAuthModal').classList.remove('hidden');
+    $('adminPassInput').value = '';
+    $('adminAuthError').classList.add('hidden');
+    $('adminPassInput').focus();
+  }
+});
+
+$('closeAdminAuthModal').addEventListener('click', () => $('adminAuthModal').classList.add('hidden'));
+
+$('adminAuthForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const pass = $('adminPassInput').value.trim();
+  if (pass === MANAGER_PASSCODE) {
+    isManagerAuthenticated = true;
+    $('adminAuthModal').classList.add('hidden');
+    $('adminModal').classList.remove('hidden');
+    loadAdminOrders();
+  } else {
+    $('adminAuthError').classList.remove('hidden');
+  }
+});
+
+$('closeAdminModal').addEventListener('click', () => $('adminModal').classList.add('hidden'));
+
+async function loadAdminOrders() {
+  const container = $('adminOrdersList');
+  let data = [];
+
+  if (supabase) {
+    const { data: cloudData } = await supabase.from('keychain_orders').select('*').order('created_at', { ascending: false });
+    if (cloudData) data = cloudData;
+  } else {
+    data = localOrdersStorage;
+  }
+
+  if (data && data.length) {
+    container.innerHTML = data.map(o => `
+      <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <span class="font-black text-indigo-400 text-xs">${o.id}</span>
+          <span class="font-bold text-slate-200 block">${o.customer_name} (${o.customer_email})</span>
+          <span class="text-[10px] text-amber-400 block font-bold">💵 Cash Payment on Pickup ${o.customer_phone ? '• 📞 ' + o.customer_phone : ''}</span>
+          ${o.specs && o.specs.thingiverse ? `<span class="text-[10px] text-cyan-300 block">Thingiverse: ${escapeHtml(o.specs.thingiverse.name)} • Licence: ${escapeHtml(o.specs.thingiverse.license)}</span>` : ''}
+        </div>
+        <div class="flex items-center gap-2">
+          ${o.specs && o.specs.thingiverse ? `<a href="${escapeHtml(o.specs.thingiverse.url)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 font-bold text-[11px] transition">🔎 Review Thingiverse Model</a>` : `<button onclick="window.downloadOrderStl('${o.stl_url || o.id + '.stl'}')" class="px-2.5 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 font-bold text-[11px] transition">📥 Download STL</button>`}
+          <select onchange="window.updateOrderStatus('${o.id}', this.value)" class="px-2 py-1 rounded bg-slate-900 border border-slate-700 text-white font-bold text-[11px]">
+            <option value="Submitted" ${o.status === 'Submitted' ? 'selected' : ''}>Submitted</option>
+            <option value="Approved" ${o.status === 'Approved' ? 'selected' : ''}>Approved</option>
+            <option value="Printing" ${o.status === 'Printing' ? 'selected' : ''}>Printing</option>
+            <option value="Ready for Pickup" ${o.status === 'Ready for Pickup' ? 'selected' : ''}>Ready for Pickup</option>
+            <option value="Picked Up" ${o.status === 'Picked Up' ? 'selected' : ''}>Picked Up</option>
+            <option value="Rejected" ${o.status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+          </select>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    container.innerHTML = '<p class="text-slate-500 text-center py-6">No submitted orders yet. Submit an order to test!</p>';
+  }
+}
+
+window.downloadOrderStl = async (filename) => {
+  if (supabase) {
+    const { data, error } = await supabase.storage.from('keychain-stls').download(filename);
+    if (data) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(data);
+      a.download = filename;
+      a.click();
+      return;
+    }
+  }
+  
+  // Fallback generation if local or bucket download unavailable
+  const stlData = generateExportableBinary();
+  const blob = new Blob([stlData], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+};
+
+window.updateOrderStatus = async (id, status) => {
+  if (supabase) {
+    await supabase.from('keychain_orders').update({ status }).eq('id', id);
+  } else {
+    const item = localOrdersStorage.find(o => o.id === id);
+    if (item) {
+      item.status = status;
+      localStorage.setItem('keychain_orders_local', JSON.stringify(localOrdersStorage));
+    }
+  }
+};
+
+// Download STL button handler
+$('exportStl').addEventListener('click', () => {
+  const stlData = generateExportableBinary();
+  const blob = new Blob([stlData], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${($('word').value || 'keychain').toLowerCase().replace(/[^a-z0-9]/g, '-')}-model.stl`;
+  a.click();
+});
+
+// Initial Build
+buildModel();
+</script>
+</body>
+</html>
