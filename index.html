@@ -1372,6 +1372,22 @@ $('deleteObj').addEventListener('click', () => {
 });
 
 // --- THINGIVERSE BROWSER ---
+async function searchModels(query, page = 1) {
+  const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&page=${page}`);
+  const data = await res.json();
+
+  if (data.error) {
+    console.error(data.error);
+    return [];
+  }
+
+  console.log(`Found ${data.total} models:`, data.models);
+  return data.models;
+}
+
+
+
+
 async function fetchThingiverseJson(netlifyParams) {
   // Keep the API credential on the server; browser requests to Thingiverse are
   // blocked by CORS and cannot safely carry a shared token.
