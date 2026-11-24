@@ -1367,7 +1367,36 @@ $('deleteObj').addEventListener('click', () => {
   }
 });
 
-// --- THINGIVERSE BROWSER (TOKEN STAYS IN NETLIFY FUNCTION) ---
+// --- THINGIVERSE BROWSER (WITH AUTOMATIC BROWSER FALLBACK FOR CLOUDFLARE) ---
+const THINGIVERSE_PUBLIC_TOKEN = "51533209463d211498753322a718e5e2";
+
+async function fetchThingiverseJson(netlifyParams, directPath, directParams = {}) {
+  // 1. Try Netlify proxy first
+  try {
+    const proxyRes = await fetch(`/.netlify/functions/thingiverse?${new URLSearchParams(netlifyParams)}`);
+    if (proxyRes.ok) return await proxyRes.json();
+  } catch (e) {
+    // Proceed to browser fallback
+  }
+
+  // 2. Fallback: Fetch directly from visitor's browser if Cloudflare blocks Netlify's AWS IP
+  const directUrl = new URL(directPath, "https://api.thingiverse.com");
+  directUrl.searchParams.set("access_token", THINGIVERSE_PUBLIC_TOKEN);
+  Object.entries(directParams).forEach(([k, v]) => {
+    if (v) directUrl.searchParams.set(k, v);
+  });
+
+  const directRes = await fetch(directUrl.toString(), {
+    headers: {
+      "Authorization": `Bearer ${THINGIVERSE_PUBLIC_TOKEN}`,
+      "Accept": "application/json"
+    }
+  });
+  const data = await directRes.json();
+  if (!directRes.ok) throw new Error(data.error || `Thingiverse error (${directRes.status})`);
+  return data;
+}
+
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
@@ -1406,8 +1435,14 @@ async function previewThingiverseStlInViewport(file) {
   $('thingiverseStatus').textContent = `Loading 3D preview for ${file.name}…`;
 
   try {
-    const res = await fetch(`/.netlify/functions/thingiverse?fileId=${encodeURIComponent(file.id)}`);
+    let res = await fetch(`/.netlify/functions/thingiverse?fileId=${encodeURIComponent(file.id)}`);
+    if (!res.ok) {
+      res = await fetch(`https://api.thingiverse.com/files/${encodeURIComponent(file.id)}/download?access_token=${THINGIVERSE_PUBLIC_TOKEN}`, {
+        headers: { "Authorization": `Bearer ${THINGIVERSE_PUBLIC_TOKEN}` }
+      });
+    }
     if (!res.ok) throw new Error('Could not load STL geometry');
+
     const arrayBuffer = await res.arrayBuffer();
     const geometry = stlLoader.parse(arrayBuffer);
 
@@ -1457,10 +1492,12 @@ async function searchThingiverse(query) {
   status.textContent = 'Searching Thingiverse…';
   results.innerHTML = '';
   try {
-    const params = new URLSearchParams({ query, sort: $('thingiverseSort').value });
-    const response = await fetch(`/.netlify/functions/thingiverse?${params.toString()}`);
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || `Search failed (${response.status})`);
+    const sort = $('thingiverseSort').value;
+    const payload = await fetchThingiverseJson(
+      { query, sort },
+      `/search/${encodeURIComponent(query)}`,
+      { type: 'things', per_page: '20', sort }
+    );
     const items = getThingiverseItems(payload).map(thingiverseModelFromApi).filter(Boolean);
     if (!items.length) {
       status.textContent = 'No models found. Try a different search phrase.';
@@ -1507,13 +1544,12 @@ async function selectThingiverseModel(model) {
   activeThingiverseFile = null;
 
   try {
-    const [detailRes, filesRes] = await Promise.all([
-      fetch(`/.netlify/functions/thingiverse?id=${encodeURIComponent(model.id)}`),
-      fetch(`/.netlify/functions/thingiverse?id=${encodeURIComponent(model.id)}&files=true`)
+    const [detail, files] = await Promise.all([
+      fetchThingiverseJson({ id: model.id }, `/things/${encodeURIComponent(model.id)}`),
+      fetchThingiverseJson({ id: model.id, files: 'true' }, `/things/${encodeURIComponent(model.id)}/files`)
     ]);
 
-    if (detailRes.ok) {
-      const detail = await detailRes.json();
+    if (detail) {
       const creator = detail.creator?.name || detail.creator?.username || model.creator;
       const licence = detail.license?.name || detail.license || detail.license_name || model.license;
       const detailUrl = detail.public_url || detail.url || model.url;
@@ -1528,61 +1564,42 @@ async function selectThingiverseModel(model) {
       $('thingiverseSelectedLink').href = selectedThingiverseModel.url;
     }
 
-    if (filesRes.ok) {
-      const files = await filesRes.json();
-      if (Array.isArray(files) && files.length > 0) {
-        selectedThingiverseModel.files = files;
-        fileListEl.innerHTML = files.map((f, idx) => {
-          const isStl = /\.stl$/i.test(f.name || '');
-          const dlHref = f.public_url || f.download_url || selectedThingiverseModel.url;
-          return `
-            <div class="flex items-center justify-between gap-1.5 p-1.5 rounded-lg bg-slate-950/90 border border-slate-800 text-[10px]">
-              <span class="truncate text-slate-200 font-bold" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span>
-              <div class="flex items-center gap-1 shrink-0">
-                ${isStl ? `<button type="button" data-file-idx="${idx}" class="tv-preview-btn px-2 py-0.5 rounded bg-indigo-600/40 hover:bg-indigo-600/60 text-indigo-200 font-bold">3D View</button>` : ''}
-                <a href="${escapeHtml(dlHref)}" target="_blank" rel="noopener noreferrer" download class="px-2 py-0.5 rounded bg-emerald-600/40 hover:bg-emerald-600/60 text-emerald-200 font-bold">Download</a>
-              </div>
-            </div>`;
-        }).join('');
+    if (Array.isArray(files) && files.length > 0) {
+      selectedThingiverseModel.files = files;
+      fileListEl.innerHTML = files.map((f, idx) => {
+        const isStl = /\.stl$/i.test(f.name || '');
+        const dlHref = f.public_url || f.download_url || selectedThingiverseModel.url;
+        return `
+          <div class="flex items-center justify-between gap-1.5 p-1.5 rounded-lg bg-slate-950/90 border border-slate-800 text-[10px]">
+            <span class="truncate text-slate-200 font-bold" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span>
+            <div class="flex items-center gap-1 shrink-0">
+              ${isStl ? `<button type="button" data-file-idx="${idx}" class="tv-preview-btn px-2 py-0.5 rounded bg-indigo-600/40 hover:bg-indigo-600/60 text-indigo-200 font-bold">3D View</button>` : ''}
+              <a href="${escapeHtml(dlHref)}" target="_blank" rel="noopener noreferrer" download class="px-2 py-0.5 rounded bg-emerald-600/40 hover:bg-emerald-600/60 text-emerald-200 font-bold">Download</a>
+            </div>
+          </div>`;
+      }).join('');
 
-        fileListEl.querySelectorAll('.tv-preview-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const f = files[Number(btn.dataset.fileIdx)];
-            if (f) previewThingiverseStlInViewport(f);
-          });
+      fileListEl.querySelectorAll('.tv-preview-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const f = files[Number(btn.dataset.fileIdx)];
+          if (f) previewThingiverseStlInViewport(f);
         });
+      });
 
-        const firstStl = files.find(f => /\.stl$/i.test(f.name || ''));
-        if (firstStl) {
-          await previewThingiverseStlInViewport(firstStl);
-        } else {
-          $('thingiverseStatus').textContent = 'Model details loaded. No STL file found for 3D preview.';
-        }
+      const firstStl = files.find(f => /\.stl$/i.test(f.name || ''));
+      if (firstStl) {
+        await previewThingiverseStlInViewport(firstStl);
       } else {
-        fileListEl.innerHTML = '<p class="text-[10px] text-slate-400">No individual files returned; use the Thingiverse link above.</p>';
+        $('thingiverseStatus').textContent = 'Model details loaded. No STL file found for 3D preview.';
       }
+    } else {
+      fileListEl.innerHTML = '<p class="text-[10px] text-slate-400">No individual files returned; use the Thingiverse link above.</p>';
     }
   } catch (error) {
     $('thingiverseStatus').textContent = 'Model selected; full details could not be loaded. Manager review is required.';
     fileListEl.innerHTML = '';
   }
 }
-
-$('thingiverseSearchForm').addEventListener('submit', event => {
-  event.preventDefault();
-  const query = $('thingiverseQuery').value.trim();
-  if (query) searchThingiverse(query);
-});
-$('clearThingiverseSelection').addEventListener('click', () => {
-  selectedThingiverseModel = null;
-  activeThingiverseFile = null;
-  $('thingiverseSelected').classList.add('hidden');
-});
-$('useThingiverseModelBtn').addEventListener('click', () => {
-  if (!selectedThingiverseModel) return;
-  $('submitModal').classList.remove('hidden');
-  $('submitModal').querySelector('h3 span').textContent = 'Submit Thingiverse Model';
-});
 
 // --- SUBMISSION & SUPABASE BACKEND INTEGRATION ---
 $('openSubmitModalBtn').addEventListener('click', () => {
