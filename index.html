@@ -155,7 +155,7 @@
                 <input id="imageFile" type="file" accept="image/svg+xml,image/png,image/jpeg,image/webp" class="hidden">
                 <div class="text-slate-400 space-y-0.5">
                   <p class="font-extrabold text-slate-200">Click to upload SVG or Photo (PNG/JPG)</p>
-                  <p class="text-[10px] text-slate-500">Supports detailed facial relief & multi-path vector graphics</p>
+                  <p class="text-[10px] text-slate-500">A clear side view works best for cars. Try High-Contrast Silhouette for a cleaner outline.</p>
                 </div>
               </div>
             </div>
@@ -164,9 +164,9 @@
               <div>
                 <label class="block font-bold text-slate-400 mb-1">SVG / Image Style</label>
                 <select id="svgMode" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
-                  <option value="relief" selected>Detail Relief (Facial/Inner Features Raised)</option>
-                  <option value="engraved">Engraved Cutouts (Lines Recessed)</option>
-                  <option value="solid">Silhouette Fill</option>
+                  <option value="relief" selected>Smooth Photo Relief</option>
+                  <option value="engraved">Engraved Relief</option>
+                  <option value="solid">High-Contrast Silhouette</option>
                 </select>
               </div>
               <div>
@@ -183,6 +183,15 @@
               </div>
               <input id="contrastThreshold" type="range" min="40" max="220" step="5" value="128" class="w-full h-1.5 bg-slate-800 rounded-lg">
               <p class="text-[9px] text-slate-500">Dark areas rise higher; lighter shades create shallower detail. Adjust contrast to control which parts stand out.</p>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="font-bold text-slate-300 text-[11px]">Smooth image surface</label>
+                <span id="imageSmoothingVal" class="text-[10px] text-indigo-400 font-bold">4</span>
+              </div>
+              <input id="imageSmoothing" type="range" min="0" max="8" step="1" value="4" class="w-full h-1.5 bg-slate-800 rounded-lg">
+              <p class="text-[9px] text-slate-500">Higher values remove small bumps and noisy photo detail.</p>
             </div>
 
             <div class="grid grid-cols-2 gap-2">
@@ -916,9 +925,9 @@ function removeImportedStl(rebuild = true) {
   if (rebuild) buildModel();
 }
 
-function processImageToReliefGrid(img, targetWidthMm, threshold) {
+function processImageToReliefGrid(img, threshold, smoothing = 3) {
   const canvas2 = document.createElement('canvas');
-  const res = 128;
+  const res = 96;
   canvas2.width = res;
   canvas2.height = res;
   const ctx = canvas2.getContext('2d');
@@ -949,7 +958,24 @@ function processImageToReliefGrid(img, targetWidthMm, threshold) {
     }
     grid.push(row);
   }
-  return { grid, res };
+  return { grid: smoothReliefGrid(grid, smoothing), res };
+}
+
+function smoothReliefGrid(source, passes) {
+  let grid = source;
+  for (let pass = 0; pass < passes; pass++) {
+    const horizontal = grid.map(row => row.map((_, x) => {
+      const left = row[Math.max(0, x - 1)];
+      const right = row[Math.min(row.length - 1, x + 1)];
+      return (left + 2 * row[x] + right) / 4;
+    }));
+    grid = horizontal.map((row, y) => row.map((value, x) => {
+      const above = horizontal[Math.max(0, y - 1)][x];
+      const below = horizontal[Math.min(horizontal.length - 1, y + 1)][x];
+      return (above + 2 * value + below) / 4;
+    }));
+  }
+  return grid;
 }
 
 function createImageReliefGeometry(grid, width, height, plateThickness, reliefDepth, mode, includeBase) {
@@ -1138,6 +1164,7 @@ function buildModel() {
     const svgBaseStyle = $('svgBaseStyle').value;
     const simplLvl = Number($('svgSimplification')?.value || 3);
     const threshold = Number($('contrastThreshold')?.value || 128);
+    const smoothing = Number($('imageSmoothing')?.value || 0);
 
     const manualW = Number($('manualBaseW').value);
     const manualH = Number($('manualBaseH').value);
@@ -1248,7 +1275,7 @@ function buildModel() {
         designGroup.add(extrude(baseShape, bt, 0, matBase));
       }
 
-      const { grid } = processImageToReliefGrid(imageData, totalWidth, threshold);
+      const { grid } = processImageToReliefGrid(imageData, threshold, smoothing);
       const reliefWidth = includeBase ? Math.max(2, totalWidth - 4) : totalWidth;
       const reliefHeightMm = includeBase ? Math.max(2, totalHeight - 4) : totalHeight;
       const reliefGeometry = createImageReliefGeometry(
@@ -1449,7 +1476,7 @@ $('imageFile').addEventListener('change', (e) => {
   }
 });
 
-['word', 'fontSize', 'textPadding', 'baseStyle', 'textHeight', 'manualBaseW', 'manualBaseH', 'imageSize', 'reliefHeight', 'contrastThreshold', 'svgMode', 'svgBaseStyle', 'svgSimplification', 'baseThick', 'showBed'].forEach((id) => {
+['word', 'fontSize', 'textPadding', 'baseStyle', 'textHeight', 'manualBaseW', 'manualBaseH', 'imageSize', 'reliefHeight', 'contrastThreshold', 'imageSmoothing', 'svgMode', 'svgBaseStyle', 'svgSimplification', 'baseThick', 'showBed'].forEach((id) => {
   const el = $(id);
   if (el) {
     el.addEventListener('input', () => {
@@ -1458,6 +1485,7 @@ $('imageFile').addEventListener('change', (e) => {
         const val = Number($('contrastThreshold').value);
         $('contrastThresholdVal').textContent = `${val} (${val < 90 ? 'High Contrast' : val > 160 ? 'Detailed' : 'Medium'})`;
       }
+      if (id === 'imageSmoothing') $('imageSmoothingVal').textContent = $('imageSmoothing').value;
       if (id === 'svgSimplification') {
         const labels = ['High Quality', 'Detailed', 'Balanced', 'Fast', 'Low Density'];
         $('svgSimplificationVal').textContent = labels[Number($('svgSimplification').value) - 1] || 'Balanced';
