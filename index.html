@@ -222,6 +222,10 @@
               <input id="thingiverseQuery" type="search" maxlength="100" required placeholder="Search models (e.g. keychain, flexi...)" class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
               <button id="thingiverseSearchBtn" type="submit" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black">Search</button>
             </form>
+            <form id="thingiverseLinkForm" class="flex gap-2">
+              <input id="thingiverseUrlInput" type="url" placeholder="Or paste a Thingiverse model link" class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
+              <button type="submit" class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-black">Use link</button>
+            </form>
             <div class="flex items-center justify-between gap-2">
               <label for="thingiverseSort" class="text-[10px] text-slate-400 font-bold">Sort results</label>
               <select id="thingiverseSort" class="px-2 py-1 rounded-lg bg-slate-950 border border-slate-700 text-white text-[10px] font-bold">
@@ -1367,7 +1371,7 @@ $('deleteObj').addEventListener('click', () => {
   }
 });
 
-// --- THINGIVERSE BROWSER (WITH AUTOMATIC BROWSER FALLBACK FOR CLOUDFLARE) ---
+// --- THINGIVERSE BROWSER ---
 async function fetchThingiverseJson(netlifyParams) {
   // Keep the API credential on the server; browser requests to Thingiverse are
   // blocked by CORS and cannot safely carry a shared token.
@@ -1515,6 +1519,47 @@ async function searchThingiverse(query) {
     btn.textContent = 'Search';
   }
 }
+
+// The Thingiverse API may reject Netlify's server IP with Cloudflare 403.
+// Let customers submit a public model URL directly so they can still request a print.
+$('thingiverseSearchForm').addEventListener('submit', event => {
+  event.preventDefault();
+  searchThingiverse($('thingiverseQuery').value.trim());
+});
+
+$('thingiverseLinkForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const rawUrl = $('thingiverseUrlInput').value.trim();
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch (error) {
+    $('thingiverseStatus').textContent = 'Paste a valid Thingiverse model URL.';
+    return;
+  }
+  const match = parsed.pathname.match(/^\/thing:(\d+)(?:\/|$)/i);
+  if (!/^https?:$/.test(parsed.protocol) || !/(^|\.)thingiverse\.com$/i.test(parsed.hostname) || !match) {
+    $('thingiverseStatus').textContent = 'Use a Thingiverse model page link, such as https://www.thingiverse.com/thing:123456.';
+    return;
+  }
+  const model = {
+    id: match[1],
+    name: `Thingiverse model ${match[1]}`,
+    creator: 'See original Thingiverse page',
+    license: 'Please verify on Thingiverse; manager review required',
+    url: `https://www.thingiverse.com/thing:${match[1]}`,
+    thumbnail: ''
+  };
+  selectedThingiverseModel = model;
+  activeThingiverseFile = null;
+  $('thingiverseSelected').classList.remove('hidden');
+  $('thingiverseSelectedName').textContent = model.name;
+  $('thingiverseSelectedMeta').textContent = `Thingiverse ID: ${model.id} • Details will be checked during manager review.`;
+  $('thingiverseSelectedLicense').textContent = `Licence: ${model.license}`;
+  $('thingiverseSelectedLink').href = model.url;
+  $('thingiverseFileList').innerHTML = '<p class="text-[10px] text-slate-400">API preview is unavailable. Open the original page to review the model and files.</p>';
+  $('thingiverseStatus').textContent = 'Model link added. Submit the request for manager review.';
+});
 
 async function selectThingiverseModel(model) {
   const selected = $('thingiverseSelected');
