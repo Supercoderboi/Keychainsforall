@@ -216,7 +216,7 @@
           <div id="thingiverseControls" class="hidden space-y-3">
             <div class="space-y-1">
               <h3 class="font-black text-slate-100 text-sm">Browse Thingiverse</h3>
-              <p class="text-[10px] leading-relaxed text-slate-400">Search public 3D models, inspect the creator and licence, then send a model to the manager for review.</p>
+              <p class="text-[10px] leading-relaxed text-slate-400">Search public 3D models, preview STL files in 3D, download models, or send one to the manager for review.</p>
             </div>
             <form id="thingiverseSearchForm" class="flex gap-2">
               <input id="thingiverseQuery" type="search" maxlength="100" required placeholder="Search models (e.g. keychain, flexi...)" class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
@@ -241,6 +241,13 @@
               <p id="thingiverseSelectedMeta" class="text-[10px] text-slate-300"></p>
               <p id="thingiverseSelectedLicense" class="text-[10px] text-amber-300"></p>
               <a id="thingiverseSelectedLink" href="#" target="_blank" rel="noopener noreferrer" class="inline-block text-[10px] text-indigo-300 underline">Open original Thingiverse page</a>
+
+              <!-- 3D PREVIEW & DOWNLOADABLE FILES LIST -->
+              <div class="space-y-1 pt-1 border-t border-indigo-500/30">
+                <span class="block text-[10px] font-bold text-slate-300">Model Files (Preview in 3D &amp; Download):</span>
+                <div id="thingiverseFileList" class="space-y-1 max-h-32 overflow-y-auto"></div>
+              </div>
+
               <p class="text-[10px] text-slate-400">The manager will check the model, licence and print suitability before accepting the order.</p>
               <button id="useThingiverseModelBtn" type="button" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black">Use this model &amp; submit order</button>
             </div>
@@ -596,6 +603,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
@@ -823,7 +831,11 @@ document.querySelectorAll('.mode-tab').forEach(tab => {
     $('thingiverseControls').classList.toggle('hidden', currentMode !== 'thingiverse');
     $('cadControls').classList.toggle('hidden', currentMode === 'thingiverse');
     $('modeBadge').textContent = currentMode === 'text' ? 'DYNAMIC TEXT' : currentMode === 'image' ? 'SVG / IMAGE' : currentMode === 'thingiverse' ? 'THINGIVERSE' : 'CAD STUDIO';
-    if (currentMode !== 'thingiverse') buildModel();
+    if (currentMode !== 'thingiverse') {
+      buildModel();
+    } else if (activeThingiverseFile) {
+      previewThingiverseStlInViewport(activeThingiverseFile);
+    }
   });
 });
 
@@ -897,6 +909,7 @@ function populateInspector(extra) {
 // --- State ---
 let currentMode = 'text';
 let selectedThingiverseModel = null;
+let activeThingiverseFile = null;
 let imageData = null;
 let parsedSvgPaths = [];
 let extras = [
@@ -904,6 +917,7 @@ let extras = [
 ];
 let selectedExtraIndex = 0;
 let loadedFont = null;
+const stlLoader = new STLLoader();
 
 function processImageToReliefGrid(img, targetWidthMm, threshold) {
   const canvas2 = document.createElement('canvas');
@@ -1386,6 +1400,54 @@ function thingiverseModelFromApi(item) {
   };
 }
 
+async function previewThingiverseStlInViewport(file) {
+  if (!file || !file.id) return;
+  activeThingiverseFile = file;
+  $('thingiverseStatus').textContent = `Loading 3D preview for ${file.name}…`;
+
+  try {
+    const res = await fetch(`/.netlify/functions/thingiverse?fileId=${encodeURIComponent(file.id)}`);
+    if (!res.ok) throw new Error('Could not load STL geometry');
+    const arrayBuffer = await res.arrayBuffer();
+    const geometry = stlLoader.parse(arrayBuffer);
+
+    transformControls.detach();
+    while (designGroup.children.length) {
+      const child = designGroup.children[0];
+      if (child === cadMeshGroup) { designGroup.remove(cadMeshGroup); continue; }
+      child.geometry?.dispose();
+      designGroup.remove(child);
+    }
+
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+
+    geometry.translate(-center.x, -center.y, -box.min.z);
+    geometry.computeVertexNormals();
+
+    const mesh = new THREE.Mesh(geometry, matBase);
+    designGroup.add(mesh);
+
+    const volumeCm3 = (size.x * size.y * size.z * 0.35) / 1000;
+    const weightG = Math.max(1.0, volumeCm3 * 1.24).toFixed(1);
+    const mins = Math.max(6, Math.round(weightG * 1.6));
+    $('statDim').textContent = `${Math.round(size.x)} x ${Math.round(size.y)} x ${size.z.toFixed(1)} mm`;
+    $('statWeight').textContent = `~${weightG} g PLA`;
+    $('statCost').textContent = `Cost: ~₹${(weightG * 1.5).toFixed(2)}`;
+    $('statPrintTime').textContent = `~${mins} mins`;
+    $('statLayers').textContent = `${Math.round(size.z / 0.2)} layers @ 0.2mm`;
+
+    $('thingiverseStatus').textContent = `Previewing ${file.name} on build bed.`;
+  } catch (err) {
+    console.error('3D STL preview error:', err);
+    $('thingiverseStatus').textContent = '3D preview unavailable for this file, but you can still download or submit it.';
+  }
+}
+
 async function searchThingiverse(query) {
   const status = $('thingiverseStatus');
   const results = $('thingiverseResults');
@@ -1433,30 +1495,76 @@ async function searchThingiverse(query) {
 
 async function selectThingiverseModel(model) {
   const selected = $('thingiverseSelected');
+  const fileListEl = $('thingiverseFileList');
   selected.classList.remove('hidden');
   $('thingiverseSelectedName').textContent = model.name;
   $('thingiverseSelectedMeta').textContent = `Thingiverse ID: ${model.id} • Creator: ${model.creator}`;
   $('thingiverseSelectedLicense').textContent = `Licence: ${model.license}`;
   $('thingiverseSelectedLink').href = model.url;
-  $('thingiverseStatus').textContent = 'Loading model details and licence…';
+  fileListEl.innerHTML = '<p class="text-[10px] text-slate-400 italic">Loading downloadable files…</p>';
+  $('thingiverseStatus').textContent = 'Loading model details, files, and licence…';
   selectedThingiverseModel = model;
+  activeThingiverseFile = null;
+
   try {
-    const response = await fetch(`/.netlify/functions/thingiverse?id=${encodeURIComponent(model.id)}`);
-    const detail = await response.json();
-    if (response.ok) {
+    const [detailRes, filesRes] = await Promise.all([
+      fetch(`/.netlify/functions/thingiverse?id=${encodeURIComponent(model.id)}`),
+      fetch(`/.netlify/functions/thingiverse?id=${encodeURIComponent(model.id)}&files=true`)
+    ]);
+
+    if (detailRes.ok) {
+      const detail = await detailRes.json();
       const creator = detail.creator?.name || detail.creator?.username || model.creator;
       const licence = detail.license?.name || detail.license || detail.license_name || model.license;
       const detailUrl = detail.public_url || detail.url || model.url;
-      selectedThingiverseModel = { ...model, creator, license: typeof licence === 'string' ? licence : model.license, url: /^https:\/\/www\.thingiverse\.com\//i.test(detailUrl) ? detailUrl : model.url };
+      selectedThingiverseModel = {
+        ...model,
+        creator,
+        license: typeof licence === 'string' ? licence : model.license,
+        url: /^https:\/\/www\.thingiverse\.com\//i.test(detailUrl) ? detailUrl : model.url
+      };
       $('thingiverseSelectedMeta').textContent = `Thingiverse ID: ${model.id} • Creator: ${creator}`;
       $('thingiverseSelectedLicense').textContent = `Licence: ${selectedThingiverseModel.license}`;
       $('thingiverseSelectedLink').href = selectedThingiverseModel.url;
-      $('thingiverseStatus').textContent = 'Model details loaded. Check the licence before submitting.';
-    } else {
-      $('thingiverseStatus').textContent = 'Model selected; full details could not be loaded. Manager review is required.';
+    }
+
+    if (filesRes.ok) {
+      const files = await filesRes.json();
+      if (Array.isArray(files) && files.length > 0) {
+        selectedThingiverseModel.files = files;
+        fileListEl.innerHTML = files.map((f, idx) => {
+          const isStl = /\.stl$/i.test(f.name || '');
+          const dlHref = f.public_url || f.download_url || selectedThingiverseModel.url;
+          return `
+            <div class="flex items-center justify-between gap-1.5 p-1.5 rounded-lg bg-slate-950/90 border border-slate-800 text-[10px]">
+              <span class="truncate text-slate-200 font-bold" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span>
+              <div class="flex items-center gap-1 shrink-0">
+                ${isStl ? `<button type="button" data-file-idx="${idx}" class="tv-preview-btn px-2 py-0.5 rounded bg-indigo-600/40 hover:bg-indigo-600/60 text-indigo-200 font-bold">3D View</button>` : ''}
+                <a href="${escapeHtml(dlHref)}" target="_blank" rel="noopener noreferrer" download class="px-2 py-0.5 rounded bg-emerald-600/40 hover:bg-emerald-600/60 text-emerald-200 font-bold">Download</a>
+              </div>
+            </div>`;
+        }).join('');
+
+        fileListEl.querySelectorAll('.tv-preview-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const f = files[Number(btn.dataset.fileIdx)];
+            if (f) previewThingiverseStlInViewport(f);
+          });
+        });
+
+        const firstStl = files.find(f => /\.stl$/i.test(f.name || ''));
+        if (firstStl) {
+          await previewThingiverseStlInViewport(firstStl);
+        } else {
+          $('thingiverseStatus').textContent = 'Model details loaded. No STL file found for 3D preview.';
+        }
+      } else {
+        fileListEl.innerHTML = '<p class="text-[10px] text-slate-400">No individual files returned; use the Thingiverse link above.</p>';
+      }
     }
   } catch (error) {
     $('thingiverseStatus').textContent = 'Model selected; full details could not be loaded. Manager review is required.';
+    fileListEl.innerHTML = '';
   }
 }
 
@@ -1467,6 +1575,7 @@ $('thingiverseSearchForm').addEventListener('submit', event => {
 });
 $('clearThingiverseSelection').addEventListener('click', () => {
   selectedThingiverseModel = null;
+  activeThingiverseFile = null;
   $('thingiverseSelected').classList.add('hidden');
 });
 $('useThingiverseModelBtn').addEventListener('click', () => {
@@ -1706,6 +1815,13 @@ window.updateOrderStatus = async (id, status) => {
 
 // Download STL button handler
 $('exportStl').addEventListener('click', () => {
+  if (currentMode === 'thingiverse' && activeThingiverseFile) {
+    const a = document.createElement('a');
+    a.href = `/.netlify/functions/thingiverse?fileId=${encodeURIComponent(activeThingiverseFile.id)}`;
+    a.download = activeThingiverseFile.name || 'thingiverse-model.stl';
+    a.click();
+    return;
+  }
   const stlData = generateExportableBinary();
   const blob = new Blob([stlData], { type: 'application/octet-stream' });
   const a = document.createElement('a');
