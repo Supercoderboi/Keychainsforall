@@ -3,28 +3,33 @@ const API_BASE = "https://api.thingiverse.com";
 
 exports.handler = async (event) => {
     const token = process.env.THINGIVERSE_TOKEN;
-    
 
+    // Check for API token
     if (!token) {
         return json(500, {
             error: "THINGIVERSE_TOKEN is missing from Netlify environment variables."
         });
     }
 
+    // Only allow GET requests
     if (event.httpMethod !== "GET") {
-        return json(405, { error: "Method not allowed." });
+        return json(405, {
+            error: "Method not allowed."
+        });
     }
 
     const params = event.queryStringParameters || {};
     const query = params.query;
     const id = params.id;
 
+    // Validate parameters
     if (!query && !id) {
         return json(400, {
-            error: "Provide either a search query or a model ID."
+            error: "Please provide a search query or model ID."
         });
     }
 
+    // Build API endpoint
     let endpoint;
 
     if (id) {
@@ -33,8 +38,9 @@ exports.handler = async (event) => {
         endpoint = `/search/${encodeURIComponent(query)}`;
     }
 
-    const url = new URL(API_BASE + endpoint);
+    const url = new URL(endpoint, API_BASE);
 
+    // Search parameters
     if (!id) {
         url.searchParams.set("type", "things");
         url.searchParams.set("per_page", "20");
@@ -45,32 +51,40 @@ exports.handler = async (event) => {
     }
 
     try {
-        const response = await fetch(url, {
+        const response = await fetch(url.toString(), {
+            method: "GET",
             headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "application/json"
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/json"
             }
         });
 
-        const text = await response.text();
+        const responseText = await response.text();
 
+        // Try parsing Thingiverse response
         let data;
+
         try {
-            data = JSON.parse(text);
-        } catch {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
             return json(502, {
                 error: "Thingiverse returned a non-JSON response.",
-                status: response.status
+                upstreamStatus: response.status,
+                contentType: response.headers.get("content-type"),
+                responsePreview: responseText.slice(0, 500)
             });
         }
 
+        // Handle API errors
         if (!response.ok) {
             return json(response.status, {
-                error: data.error || data.detail || "Thingiverse API request failed.",
+                error: "Thingiverse API request failed.",
+                upstreamStatus: response.status,
                 details: data
             });
         }
 
+        // Successful response
         return json(200, data);
 
     } catch (error) {
@@ -81,12 +95,14 @@ exports.handler = async (event) => {
     }
 };
 
+
+// Consistent JSON response helper
 function json(statusCode, body) {
     return {
         statusCode,
         headers: {
             "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
+            "Cache-Control": "no-store"
         },
         body: JSON.stringify(body)
     };
