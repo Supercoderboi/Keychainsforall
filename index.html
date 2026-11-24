@@ -267,6 +267,7 @@
               <button id="importStlBtn" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold text-xs border border-slate-700 transition">
                 📂 Import Custom STL
               </button>
+              <p id="stlImportStatus" class="text-[10px] text-slate-400" aria-live="polite">Add an STL to the current design.</p>
             </div>
 
             <!-- CAD OBJECTS CHIPS -->
@@ -1233,6 +1234,64 @@ function generateExportableBinary() {
 }
 
 $('dropZone').addEventListener('click', () => $('imageFile').click());
+$('importStlBtn').addEventListener('click', () => $('stlImportFile').click());
+$('stlImportFile').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const status = $('stlImportStatus');
+  const button = $('importStlBtn');
+  status.classList.remove('text-rose-300');
+  button.disabled = true;
+  status.textContent = `Loading ${file.name}…`;
+
+  try {
+    const geometry = stlLoader.parse(await file.arrayBuffer());
+    const position = geometry.getAttribute('position');
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    if (!position || position.count < 3 || !box || box.isEmpty()) {
+      throw new Error('This file does not contain a printable STL mesh.');
+    }
+
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    if (![size.x, size.y, size.z].every(Number.isFinite) || size.x <= 0 || size.y <= 0 || size.z <= 0) {
+      throw new Error('The STL mesh has invalid dimensions.');
+    }
+
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    geometry.translate(-center.x, -center.y, -box.min.z);
+    geometry.computeVertexNormals();
+
+    const importedMesh = new THREE.Mesh(geometry, matBase);
+    const name = file.name.replace(/\.stl$/i, '').slice(0, 28) || 'Imported STL';
+    extras.push({
+      type: 'imported',
+      name,
+      x: 0,
+      y: 0,
+      z: 0,
+      w: size.x,
+      h: size.z,
+      isHole: false,
+      importedMesh
+    });
+    selectedExtraIndex = extras.length - 1;
+    populateInspector(extras[selectedExtraIndex]);
+    buildModel();
+    status.textContent = `Added ${name} (${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} mm). It will be included in the exported STL.`;
+  } catch (error) {
+    console.error('Custom STL import error:', error);
+    status.textContent = error.message || 'Could not read this STL file.';
+    status.classList.add('text-rose-300');
+  } finally {
+    button.disabled = false;
+    event.target.value = '';
+  }
+});
+
 $('imageFile').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
