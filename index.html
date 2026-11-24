@@ -179,16 +179,16 @@
             <div class="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
               <div class="flex items-center justify-between">
                 <label class="font-bold text-slate-300 text-[11px]">Photo Feature / Detail Contrast</label>
-                <span id="contrastThresholdVal" class="text-[10px] text-indigo-400 font-bold">128 (Medium)</span>
+                <span id="contrastThresholdVal" class="text-[10px] text-indigo-400 font-bold">128</span>
               </div>
               <input id="contrastThreshold" type="range" min="40" max="220" step="5" value="128" class="w-full h-1.5 bg-slate-800 rounded-lg">
-              <p class="text-[9px] text-slate-500">Adjust threshold to bring out facial features, eyes, and line details from uploaded images.</p>
+              <p class="text-[9px] text-slate-500">Dark areas rise higher; lighter shades create shallower detail. Adjust contrast to control which parts stand out.</p>
             </div>
 
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="block font-bold text-slate-400 mb-1">Detail Relief Height (mm)</label>
-                <input id="reliefHeight" type="range" min="0.6" max="4.0" step="0.2" value="1.6" class="w-full h-1.5 bg-slate-800 rounded-lg">
+                <label class="block font-bold text-slate-400 mb-1">Image Relief Depth (mm)</label>
+                <input id="reliefHeight" type="range" min="0.6" max="8.0" step="0.2" value="3.0" class="w-full h-1.5 bg-slate-800 rounded-lg">
               </div>
               <div>
                 <label class="block font-bold text-slate-400 mb-1">Base Plate Shape</label>
@@ -268,6 +268,7 @@
                 📂 Import Custom STL
               </button>
               <p id="stlImportStatus" class="text-[10px] text-slate-400" aria-live="polite">Add an STL to the current design.</p>
+              <button id="clearImportedStlBtn" type="button" class="hidden text-[10px] text-rose-300 underline">Remove STL and restore CAD design</button>
             </div>
 
             <!-- CAD OBJECTS CHIPS -->
@@ -795,6 +796,8 @@ function updateGizmoUI(modeText) {
 // Mode Tabs
 document.querySelectorAll('.mode-tab').forEach(tab => {
   tab.addEventListener('click', () => {
+    const removedImportedStl = !!importedStlExtra && tab.dataset.mode !== 'cad';
+    if (removedImportedStl) removeImportedStl(false);
     currentMode = tab.dataset.mode;
     document.querySelectorAll('.mode-tab').forEach(t => {
       const active = t === tab;
@@ -808,7 +811,7 @@ document.querySelectorAll('.mode-tab').forEach(tab => {
     $('cadControls').classList.toggle('hidden', currentMode === 'thingiverse');
     $('modeBadge').textContent = currentMode === 'text' ? 'DYNAMIC TEXT' : currentMode === 'image' ? 'SVG / IMAGE' : currentMode === 'thingiverse' ? 'THINGIVERSE' : 'CAD STUDIO';
     $('openSubmitModalBtn').textContent = currentMode === 'thingiverse' ? 'Submit Thingiverse Model Request' : 'Submit Keychain for Printing';
-    if (currentMode !== 'thingiverse') buildModel();
+    if (currentMode !== 'thingiverse' || removedImportedStl) buildModel();
   });
 });
 
@@ -868,6 +871,10 @@ function populateInspector(extra) {
       const e = extras[selectedExtraIndex];
       e.w = Number($('shapeEditW').value) || 10;
       e.h = Number($('shapeEditH').value) || 4;
+      if (e.importedMesh) {
+        e.scaleX = e.w / e.originalW;
+        e.scaleZ = e.h / e.originalH;
+      }
       e.x = Number($('shapeEditX').value) || 0;
       e.y = Number($('shapeEditY').value) || 0;
       e.z = Number($('shapeEditZ').value) || 0;
@@ -889,8 +896,25 @@ let extras = [
   { type: 'loop', name: 'Keyring Loop', x: -28, y: 0, z: 0, w: 10, h: 4, isHole: false }
 ];
 let selectedExtraIndex = 0;
+let importedStlExtra = null;
 let loadedFont = null;
 const stlLoader = new STLLoader();
+
+function removeImportedStl(rebuild = true) {
+  if (!importedStlExtra) return;
+  importedStlExtra.importedMesh.geometry.dispose();
+  extras = extras.filter(extra => extra !== importedStlExtra);
+  importedStlExtra = null;
+  if (!extras.length) {
+    extras = [{ type: 'loop', name: 'Keyring Loop', x: -28, y: 0, z: 0, w: 10, h: 4, isHole: false }];
+  }
+  selectedExtraIndex = 0;
+  transformControls.detach();
+  $('clearImportedStlBtn').classList.add('hidden');
+  $('objectEditor').classList.add('hidden');
+  $('stlImportStatus').textContent = 'Custom STL removed.';
+  if (rebuild) buildModel();
+}
 
 function processImageToReliefGrid(img, targetWidthMm, threshold) {
   const canvas2 = document.createElement('canvas');
@@ -898,7 +922,14 @@ function processImageToReliefGrid(img, targetWidthMm, threshold) {
   canvas2.width = res;
   canvas2.height = res;
   const ctx = canvas2.getContext('2d');
-  ctx.drawImage(img, 0, 0, res, res);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, res, res);
+  const imageWidth = img.naturalWidth || img.width;
+  const imageHeight = img.naturalHeight || img.height;
+  const fitScale = Math.min(res / imageWidth, res / imageHeight);
+  const drawWidth = imageWidth * fitScale;
+  const drawHeight = imageHeight * fitScale;
+  ctx.drawImage(img, (res - drawWidth) / 2, (res - drawHeight) / 2, drawWidth, drawHeight);
   const imgData = ctx.getImageData(0, 0, res, res);
   const data = imgData.data;
 
@@ -913,12 +944,99 @@ function processImageToReliefGrid(img, targetWidthMm, threshold) {
       const a = data[idx + 3];
 
       const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-      const isFeature = (a > 30) && (brightness < threshold);
-      row.push(isFeature ? 1 : 0);
+      const darkAmount = a > 30 ? Math.max(0, Math.min(1, (threshold - brightness) / Math.max(1, threshold))) : 0;
+      row.push(Math.pow(darkAmount, 0.8));
     }
     grid.push(row);
   }
   return { grid, res };
+}
+
+function createImageReliefGeometry(grid, width, height, plateThickness, reliefDepth, mode, includeBase) {
+  const rows = grid.length;
+  const columns = grid[0]?.length || 0;
+  if (rows < 2 || columns < 2) throw new Error('Image relief needs more pixels.');
+
+  const gridCount = rows * columns;
+  const positions = new Float32Array(gridCount * 2 * 3);
+  const indices = [];
+  const isEngraved = mode === 'engraved';
+  const isSolid = mode === 'solid';
+  const cutDepth = Math.min(reliefDepth, Math.max(0.2, plateThickness - 0.4));
+  const bottomZ = isEngraved ? 0 : (includeBase ? plateThickness - 0.02 : 0);
+
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      const i = row * columns + column;
+      let feature = grid[row][column];
+      if (isSolid) feature = feature > 0.35 ? 1 : 0;
+      const x = (column / (columns - 1) - 0.5) * width;
+      const y = (0.5 - row / (rows - 1)) * height;
+      const topZ = isEngraved
+        ? plateThickness - cutDepth * feature
+        : bottomZ + (includeBase ? 0.05 : 0.15) + feature * reliefDepth;
+      const topOffset = i * 3;
+      const bottomOffset = (gridCount + i) * 3;
+      positions[topOffset] = positions[bottomOffset] = x;
+      positions[topOffset + 1] = positions[bottomOffset + 1] = y;
+      positions[topOffset + 2] = topZ;
+      positions[bottomOffset + 2] = bottomZ;
+    }
+  }
+
+  const bottomIndex = gridCount;
+  for (let row = 0; row < rows - 1; row++) {
+    for (let column = 0; column < columns - 1; column++) {
+      const a = row * columns + column;
+      const b = a + 1;
+      const c = a + columns;
+      const d = c + 1;
+      indices.push(a, c, b, b, c, d);
+      indices.push(bottomIndex + a, bottomIndex + b, bottomIndex + c,
+        bottomIndex + b, bottomIndex + d, bottomIndex + c);
+    }
+  }
+
+  const addSide = (topA, topB) => {
+    const lowerA = bottomIndex + topA;
+    const lowerB = bottomIndex + topB;
+    indices.push(topA, lowerA, topB, topB, lowerA, lowerB);
+  };
+  for (let column = 0; column < columns - 1; column++) {
+    addSide(column, column + 1);
+    const lastRow = (rows - 1) * columns;
+    addSide(lastRow + column + 1, lastRow + column);
+  }
+  for (let row = 0; row < rows - 1; row++) {
+    const first = row * columns;
+    const next = (row + 1) * columns;
+    addSide(next, first);
+    addSide(first + columns - 1, next + columns - 1);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  return geometry;
+}
+
+function estimateGeometryVolumeMm3(geometry) {
+  const positions = geometry.getAttribute('position');
+  const index = geometry.getIndex();
+  const triangleCount = index ? index.count / 3 : positions.count / 3;
+  let signedVolume = 0;
+  for (let triangle = 0; triangle < triangleCount; triangle++) {
+    const ia = index ? index.getX(triangle * 3) : triangle * 3;
+    const ib = index ? index.getX(triangle * 3 + 1) : triangle * 3 + 1;
+    const ic = index ? index.getX(triangle * 3 + 2) : triangle * 3 + 2;
+    const ax = positions.getX(ia), ay = positions.getY(ia), az = positions.getZ(ia);
+    const bx = positions.getX(ib), by = positions.getY(ib), bz = positions.getZ(ib);
+    const cx = positions.getX(ic), cy = positions.getY(ic), cz = positions.getZ(ic);
+    signedVolume += ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx);
+  }
+  return Math.abs(signedVolume / 6);
 }
 
 function getShapeArea(shape) {
@@ -1025,7 +1143,7 @@ function buildModel() {
     const manualH = Number($('manualBaseH').value);
 
     totalWidth = manualW > 0 ? manualW : targetW;
-    totalHeight = manualH > 0 ? manualH : targetW;
+    totalHeight = manualH > 0 ? manualH : (imageData && imageData.width ? totalWidth * imageData.height / imageData.width : targetW);
 
     if (parsedSvgPaths && parsedSvgPaths.length > 0) {
       let allExtrudedShapes = [];
@@ -1123,36 +1241,20 @@ function buildModel() {
       }
 
     } else if (imageData) {
-      const baseShape = roundedShape(totalWidth, totalHeight, 6);
-      if (svgBaseStyle !== 'none') {
+      const includeBase = svgBaseStyle !== 'none' && svgTreatment !== 'engraved';
+      if (includeBase) {
+        const baseShape = svgBaseStyle === 'circle' ? new THREE.Shape() : roundedShape(totalWidth, totalHeight, 6);
+        if (svgBaseStyle === 'circle') baseShape.absarc(0, 0, Math.max(totalWidth, totalHeight) / 2 + 4, 0, Math.PI * 2, false);
         designGroup.add(extrude(baseShape, bt, 0, matBase));
       }
 
-      const { grid, res } = processImageToReliefGrid(imageData, totalWidth, threshold);
-      const cellW = totalWidth / res;
-      const cellH = totalHeight / res;
-
-      const boxGeo = new THREE.BoxGeometry(cellW * 1.1, cellH * 1.1, detailH);
-      const instancedMesh = new THREE.InstancedMesh(boxGeo, matText, res * res);
-      let count = 0;
-      const matrix = new THREE.Matrix4();
-
-      for (let y = 0; y < res; y += 1) {
-        for (let x = 0; x < res; x += 1) {
-          if (grid[y][x] === 1) {
-            const posX = (x - res / 2) * cellW + cellW / 2;
-            const posY = (res / 2 - y) * cellH - cellH / 2;
-            const posZ = bt + detailH / 2;
-
-            matrix.setPosition(posX, posY, posZ);
-            instancedMesh.setMatrixAt(count++, matrix);
-          }
-        }
-      }
-
-      instancedMesh.count = count;
-      instancedMesh.instanceMatrix.needsUpdate = true;
-      designGroup.add(instancedMesh);
+      const { grid } = processImageToReliefGrid(imageData, totalWidth, threshold);
+      const reliefWidth = includeBase ? Math.max(2, totalWidth - 4) : totalWidth;
+      const reliefHeightMm = includeBase ? Math.max(2, totalHeight - 4) : totalHeight;
+      const reliefGeometry = createImageReliefGeometry(
+        grid, reliefWidth, reliefHeightMm, bt, detailH, svgTreatment, includeBase
+      );
+      designGroup.add(new THREE.Mesh(reliefGeometry, matText));
 
     } else {
       const baseShape = roundedShape(totalWidth, totalHeight, 8);
@@ -1176,12 +1278,13 @@ function buildModel() {
       geo = new TextGeometry(e.textVal || '3D', { font: loadedFont, size: e.w / 2, height: h, curveSegments: 24 });
     } else if (e.importedMesh) {
       geo = e.importedMesh.geometry.clone();
+      geo.scale(e.scaleX || 1, e.scaleY || 1, e.scaleZ || 1);
     } else {
       geo = new THREE.BoxGeometry(e.w, e.w * 0.8, h);
     }
 
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(e.x, e.y, (e.z || 0) + bt / 2);
+    mesh.position.set(e.x, e.y, (e.z || 0) + (e.importedMesh ? 0 : bt / 2));
 
     if (e.type === 'cylinder') {
       mesh.rotation.set((e.rotX || 0) + Math.PI / 2, e.rotY || 0, e.rotZ || 0);
@@ -1197,7 +1300,21 @@ function buildModel() {
     }
   });
 
-  const totalVolumeCm3 = (totalWidth * totalHeight * (bt + 1.6)) / 1000;
+  const importedItem = extras.find(item => item.importedMesh);
+  let totalVolumeCm3;
+  if (importedItem) {
+    const sourceGeometry = importedItem.importedMesh.geometry;
+    if (!sourceGeometry.boundingBox) sourceGeometry.computeBoundingBox();
+    const size = new THREE.Vector3();
+    sourceGeometry.boundingBox.getSize(size);
+    const boundsVolume = size.x * size.y * size.z;
+    let meshVolume = estimateGeometryVolumeMm3(sourceGeometry);
+    if (!Number.isFinite(meshVolume) || meshVolume <= 0 || meshVolume > boundsVolume * 1.01) meshVolume = boundsVolume * 0.2;
+    const scale = Math.abs((importedItem.scaleX || 1) * (importedItem.scaleY || 1) * (importedItem.scaleZ || 1));
+    totalVolumeCm3 = (meshVolume * scale) / 1000;
+  } else {
+    totalVolumeCm3 = (totalWidth * totalHeight * (bt + 1.6)) / 1000;
+  }
   const filamentWeightG = (totalVolumeCm3 * 1.24).toFixed(1);
   const materialCostInr = Number(filamentWeightG) * 1.5;
   estimatedTotalPriceInr = Number((materialCostInr + PROFIT_MARGIN_INR).toFixed(2));
@@ -1235,6 +1352,7 @@ function generateExportableBinary() {
 
 $('dropZone').addEventListener('click', () => $('imageFile').click());
 $('importStlBtn').addEventListener('click', () => $('stlImportFile').click());
+$('clearImportedStlBtn').addEventListener('click', () => removeImportedStl());
 $('stlImportFile').addEventListener('change', async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -1263,11 +1381,15 @@ $('stlImportFile').addEventListener('change', async (event) => {
     const center = new THREE.Vector3();
     box.getCenter(center);
     geometry.translate(-center.x, -center.y, -box.min.z);
+    geometry.computeBoundingBox();
     geometry.computeVertexNormals();
 
+    extras.forEach(extra => extra.importedMesh?.geometry.dispose());
+    transformControls.detach();
+    extras = [];
     const importedMesh = new THREE.Mesh(geometry, matBase);
     const name = file.name.replace(/\.stl$/i, '').slice(0, 28) || 'Imported STL';
-    extras.push({
+    importedStlExtra = {
       type: 'imported',
       name,
       x: 0,
@@ -1275,13 +1397,21 @@ $('stlImportFile').addEventListener('change', async (event) => {
       z: 0,
       w: size.x,
       h: size.z,
+      originalW: size.x,
+      originalH: size.z,
+      scaleX: 1,
+      scaleY: 1,
+      scaleZ: 1,
       isHole: false,
       importedMesh
-    });
-    selectedExtraIndex = extras.length - 1;
+    };
+    extras.push(importedStlExtra);
+    selectedExtraIndex = 0;
+    $('clearImportedStlBtn').classList.remove('hidden');
+    if (currentMode !== 'cad') document.querySelector('.mode-tab[data-mode="cad"]').click();
     populateInspector(extras[selectedExtraIndex]);
     buildModel();
-    status.textContent = `Added ${name} (${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} mm). It will be included in the exported STL.`;
+    status.textContent = `Loaded ${name} (${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} mm). The previous design was replaced; this mesh will be used for the price estimate and order.`;
   } catch (error) {
     console.error('Custom STL import error:', error);
     status.textContent = error.message || 'Could not read this STL file.';
