@@ -53,7 +53,6 @@
       <div>
         <h1 class="font-black text-sm sm:text-base leading-tight tracking-tight text-white flex items-center gap-2">
           Keychains for All
-          <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ender-3 V3 KE</span>
         </h1>
         <p class="text-[11px] text-slate-400 font-medium">Design • Direct Print Order • Pickup Tracker</p>
       </div>
@@ -212,50 +211,24 @@
             </div>
           </div>
 
-          <!-- THINGIVERSE MODEL BROWSER -->
+          <!-- THINGIVERSE MODEL LINK -->
           <div id="thingiverseControls" class="hidden space-y-3">
             <div class="space-y-1">
-              <h3 class="font-black text-slate-100 text-sm">Browse Thingiverse</h3>
-              <p class="text-[10px] leading-relaxed text-slate-400">Search public 3D models, preview STL files in 3D, download models, or send one to the manager for review.</p>
+              <h3 class="font-black text-slate-100 text-sm">Have a Thingiverse model in mind?</h3>
+              <p class="text-[10px] leading-relaxed text-slate-400">Find it on Thingiverse, copy the link, and paste it here. We’ll check it before printing.</p>
+              <a href="https://www.thingiverse.com/" target="_blank" rel="noopener noreferrer" class="inline-block text-[10px] text-indigo-300 underline">Browse Thingiverse models ↗</a>
             </div>
-            <form id="thingiverseSearchForm" class="flex gap-2">
-              <input id="thingiverseQuery" type="search" maxlength="100" required placeholder="Search models (e.g. keychain, flexi...)" class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
-              <button id="thingiverseSearchBtn" type="submit" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black">Search</button>
+            <form id="thingiverseLinkForm" class="space-y-2">
+              <input id="thingiverseUrlInput" type="url" required placeholder="https://www.thingiverse.com/thing:123456" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
+              <button type="submit" class="w-full px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black">Add model link</button>
             </form>
-            <form id="thingiverseLinkForm" class="flex gap-2">
-              <input id="thingiverseUrlInput" type="url" placeholder="Or paste a Thingiverse model link" class="min-w-0 flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
-              <button type="submit" class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-black">Use link</button>
-            </form>
-            <div class="flex items-center justify-between gap-2">
-              <label for="thingiverseSort" class="text-[10px] text-slate-400 font-bold">Sort results</label>
-              <select id="thingiverseSort" class="px-2 py-1 rounded-lg bg-slate-950 border border-slate-700 text-white text-[10px] font-bold">
-                <option value="relevant">Most relevant</option>
-                <option value="popular">Most popular</option>
-                <option value="newest">Newest</option>
-              </select>
-            </div>
-            <p id="thingiverseStatus" class="text-[10px] text-slate-400" aria-live="polite">Search for a model to get started.</p>
-            <div id="thingiverseResults" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
             <div id="thingiverseSelected" class="hidden p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/40 space-y-2">
-              <div class="flex items-center justify-between gap-2">
-                <span class="font-black text-indigo-200">Selected model</span>
-                <button id="clearThingiverseSelection" type="button" class="text-[10px] text-slate-400 hover:text-white">Clear</button>
-              </div>
-              <p id="thingiverseSelectedName" class="text-xs text-white font-bold"></p>
-              <p id="thingiverseSelectedMeta" class="text-[10px] text-slate-300"></p>
-              <p id="thingiverseSelectedLicense" class="text-[10px] text-amber-300"></p>
-              <a id="thingiverseSelectedLink" href="#" target="_blank" rel="noopener noreferrer" class="inline-block text-[10px] text-indigo-300 underline">Open original Thingiverse page</a>
-
-              <!-- 3D PREVIEW & DOWNLOADABLE FILES LIST -->
-              <div class="space-y-1 pt-1 border-t border-indigo-500/30">
-                <span class="block text-[10px] font-bold text-slate-300">Model Files (Preview in 3D &amp; Download):</span>
-                <div id="thingiverseFileList" class="space-y-1 max-h-32 overflow-y-auto"></div>
-              </div>
-
-              <p class="text-[10px] text-slate-400">The manager will check the model, licence and print suitability before accepting the order.</p>
-              <button id="useThingiverseModelBtn" type="button" class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black">Use this model &amp; submit order</button>
+              <p class="text-xs text-white font-bold">Link ready</p>
+              <a id="thingiverseSelectedLink" href="#" target="_blank" rel="noopener noreferrer" class="break-all text-[10px] text-indigo-300 underline">Open model on Thingiverse ↗</a>
+              <p class="text-[10px] text-slate-400">We’ll check the model and its licence before confirming your order.</p>
+              <button id="clearThingiverseSelection" type="button" class="text-[10px] text-slate-400 underline">Remove link</button>
             </div>
-            <p class="text-[9px] leading-relaxed text-slate-500">Thingiverse models have different licences. A model being visible here does not automatically mean it can be used for paid printing. We display the licence when available and require manager approval.</p>
+            <p id="thingiverseStatus" class="text-[10px] text-rose-300" aria-live="polite"></p>
           </div>
 
           <!-- CAD & GIZMO CONTROLS -->
@@ -362,7 +335,7 @@
                 <select id="baseThick" class="w-full px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white font-bold">
                   <option value="2.0">2.0 mm (Fast)</option>
                   <option value="3.0">3.0 mm</option>
-                  <option value="4.0" selected>4.0 mm (Standard PLA)</option>
+                  <option value="4.0" selected>4.0 mm (Standard)</option>
                   <option value="5.0">5.0 mm</option>
                 </select>
               </div>
@@ -406,33 +379,15 @@
         <div id="viewport" class="relative viewport-bg h-[420px] sm:h-[480px] lg:h-[520px] w-full">
           <canvas id="canvas3d" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
           
-          <div class="absolute top-3 left-3 px-3 py-1.5 rounded-xl bg-slate-950/80 backdrop-blur border border-slate-800 text-[11px] font-extrabold text-slate-200 pointer-events-none">
-            Build Surface (220 x 220 mm)
-          </div>
         </div>
 
-        <!-- PRINT METRICS -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-slate-950 border-t border-slate-800 text-xs">
-          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-            <span class="block text-[10px] font-black uppercase text-slate-500">Est. Print Time</span>
-            <strong id="statPrintTime" class="text-emerald-400 font-black text-sm">~14 mins</strong>
-            <span class="block text-[9px] text-slate-500">@ 250 mm/s PLA</span>
+        <!-- CUSTOMER PRICE -->
+        <div class="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">
+          <div>
+            <span class="block text-[10px] font-black uppercase text-slate-400">Estimated total</span>
+            <span class="block text-[10px] text-slate-500">Thingiverse model prices are confirmed after review</span>
           </div>
-          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-            <span class="block text-[10px] font-black uppercase text-slate-500">PLA Material</span>
-            <strong id="statWeight" class="text-indigo-400 font-black text-sm">~8.5 g</strong>
-            <span id="statCost" class="block text-[9px] text-slate-400">Cost: ~₹12.75</span>
-          </div>
-          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-            <span class="block text-[10px] font-black uppercase text-slate-500">Dimensions</span>
-            <strong id="statDim" class="text-slate-200 font-black text-sm">62 x 28 x 5.6 mm</strong>
-            <span id="statLayers" class="block text-[9px] text-slate-400">28 layers @ 0.2mm</span>
-          </div>
-          <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-            <span class="block text-[10px] font-black uppercase text-slate-500">Payment Mode</span>
-            <strong class="text-amber-400 font-black text-sm">💵 Cash on Pickup</strong>
-            <span class="block text-[9px] text-emerald-400 font-bold">Single-colour print</span>
-          </div>
+          <strong id="statCost" class="text-emerald-400 font-black text-xl">₹27.75</strong>
         </div>
 
         <!-- ACTION & ORDER BUTTONS -->
@@ -456,7 +411,6 @@
       <div class="flex items-center justify-between border-b border-slate-800 pb-2">
         <h3 class="font-black text-sm text-white flex items-center gap-2">
           <span>Submit Order for Printing</span>
-          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30">PLA Ender-3</span>
         </h3>
         <button id="closeSubmitModal" class="text-slate-400 hover:text-white font-bold">✕</button>
       </div>
@@ -475,13 +429,29 @@
           <input id="custPhone" type="tel" placeholder="+91 98765 43210" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-indigo-500">
         </div>
 
+        <div class="p-3 bg-slate-950 border border-emerald-500/30 rounded-xl">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-bold text-slate-300">Estimated total (includes ₹15 profit)</span>
+            <strong id="orderPrice" class="text-lg font-black text-emerald-400">₹27.75</strong>
+          </div>
+        </div>
+
         <!-- CASH PAYMENT NOTICE -->
         <div class="p-3 bg-slate-950 border border-amber-500/30 rounded-xl space-y-1">
           <div class="flex items-center justify-between">
             <span class="font-black text-amber-400 text-xs">💵 Payment Method</span>
             <span class="text-[10px] font-bold text-slate-400">Cash Only</span>
           </div>
-          <p class="text-[11px] text-slate-300">Payment is collected in <strong>Cash upon pickup</strong> once your keychain is printed and ready.</p>
+          <p class="text-[11px] text-slate-300">Pick up your order and pay the displayed total in <strong>cash when it is ready</strong>. Delivery is not available.</p>
+        </div>
+
+        <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+          <p class="text-[10px] font-black uppercase text-slate-400">Terms</p>
+          <p class="text-[10px] leading-relaxed text-slate-300">Please collect your order from the agreed pickup spot and pay in cash when you pick it up. We don’t offer delivery. Thingiverse requests need approval after we check the model and its licence. The finished print may look a little different from the preview.</p>
+          <label class="flex items-start gap-2 text-[10px] leading-relaxed text-slate-200">
+            <input id="termsAccepted" type="checkbox" required class="mt-0.5 accent-emerald-500">
+            <span>I understand I’ll need to pick up and pay for my order, and that the final price will be confirmed before printing.</span>
+          </label>
         </div>
 
         <div id="submitStatusMsg" class="text-xs font-bold hidden p-2 rounded-lg"></div>
@@ -620,6 +590,7 @@ const DEFAULT_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmF
 
 // Manager Passcode Configuration
 const MANAGER_PASSCODE = 'CrealityEnder3V3KE';
+const PROFIT_MARGIN_INR = 15;
 let isManagerAuthenticated = false;
 
 // --- SUPABASE & LOCAL BACKEND STATE ---
@@ -835,11 +806,8 @@ document.querySelectorAll('.mode-tab').forEach(tab => {
     $('thingiverseControls').classList.toggle('hidden', currentMode !== 'thingiverse');
     $('cadControls').classList.toggle('hidden', currentMode === 'thingiverse');
     $('modeBadge').textContent = currentMode === 'text' ? 'DYNAMIC TEXT' : currentMode === 'image' ? 'SVG / IMAGE' : currentMode === 'thingiverse' ? 'THINGIVERSE' : 'CAD STUDIO';
-    if (currentMode !== 'thingiverse') {
-      buildModel();
-    } else if (activeThingiverseFile) {
-      previewThingiverseStlInViewport(activeThingiverseFile);
-    }
+    $('openSubmitModalBtn').textContent = currentMode === 'thingiverse' ? 'Submit Thingiverse Model Request' : 'Submit Keychain for Printing';
+    if (currentMode !== 'thingiverse') buildModel();
   });
 });
 
@@ -913,7 +881,7 @@ function populateInspector(extra) {
 // --- State ---
 let currentMode = 'text';
 let selectedThingiverseModel = null;
-let activeThingiverseFile = null;
+let estimatedTotalPriceInr = 27.75;
 let imageData = null;
 let parsedSvgPaths = [];
 let extras = [
@@ -1230,16 +1198,10 @@ function buildModel() {
 
   const totalVolumeCm3 = (totalWidth * totalHeight * (bt + 1.6)) / 1000;
   const filamentWeightG = (totalVolumeCm3 * 1.24).toFixed(1);
-  const printTimeMins = Math.max(6, Math.round(filamentWeightG * 1.6));
-  const layerCount = Math.round((bt + 1.6) / 0.2);
-
-  const costInInr = (filamentWeightG * 1.5).toFixed(2);
-
-  $('statDim').textContent = `${Math.round(totalWidth)} x ${Math.round(totalHeight)} x ${(bt + 1.6).toFixed(1)} mm`;
-  $('statWeight').textContent = `~${filamentWeightG} g PLA`;
-  $('statCost').textContent = `Cost: ~₹${costInInr}`;
-  $('statPrintTime').textContent = `~${printTimeMins} mins`;
-  $('statLayers').textContent = `${layerCount} layers @ 0.2mm`;
+  const materialCostInr = Number(filamentWeightG) * 1.5;
+  estimatedTotalPriceInr = Number((materialCostInr + PROFIT_MARGIN_INR).toFixed(2));
+  $('statCost').textContent = `₹${estimatedTotalPriceInr.toFixed(2)}`;
+  $('orderPrice').textContent = `₹${estimatedTotalPriceInr.toFixed(2)}`;
 
   bedGroup.visible = $('showBed').checked;
   updateObjectsUI();
@@ -1371,288 +1333,45 @@ $('deleteObj').addEventListener('click', () => {
   }
 });
 
-// --- THINGIVERSE BROWSER ---
-async function searchModels(query, page = 1) {
-  const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&page=${page}`);
-  const data = await res.json();
-
-  if (data.error) {
-    console.error(data.error);
-    return [];
-  }
-
-  console.log(`Found ${data.total} models:`, data.models);
-  return data.models;
-}
-
-
-
-
-async function fetchThingiverseJson(netlifyParams) {
-  // Keep the API credential on the server; browser requests to Thingiverse are
-  // blocked by CORS and cannot safely carry a shared token.
-  let proxyRes;
-  try {
-    proxyRes = await fetch(`/.netlify/functions/thingiverse?${new URLSearchParams(netlifyParams)}`);
-  } catch (error) {
-    throw new Error('Could not reach the Thingiverse service. Make sure this site is deployed on Netlify with the function enabled.');
-  }
-
-  let payload;
-  try {
-    payload = await proxyRes.json();
-  } catch (error) {
-    throw new Error(`Thingiverse service returned an invalid response (HTTP ${proxyRes.status}).`);
-  }
-  if (!proxyRes.ok) {
-    throw new Error(payload.error || `Thingiverse request failed (HTTP ${proxyRes.status}).`);
-  }
-  return payload;
-}
-
-function escapeHtml(value = '') {
-  return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-}
-
-function getThingiverseItems(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.models)) return payload.models;
-  if (Array.isArray(payload?.hits)) return payload.hits;
-  if (Array.isArray(payload?.things)) return payload.things;
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.results)) return payload.results;
-  return [];
-}
-
-function thingiverseModelFromApi(item) {
-  const id = item.id ?? item.thing_id ?? item.public_id;
-  if (!id) return null;
-  const creator = typeof item.creator === 'string' ? item.creator : (item.creator?.name || item.creator?.username || item.creator?.full_name || item.username || 'Unknown creator');
-  const url = item.public_url || item.url || `https://www.thingiverse.com/thing:${encodeURIComponent(id)}`;
-  const safeUrl = /^https:\/\/www\.thingiverse\.com\//i.test(url) ? url : `https://www.thingiverse.com/thing:${encodeURIComponent(id)}`;
-  const thumbnailCandidate = typeof item.thumbnail === 'string' ? item.thumbnail : (item.thumbnail?.url || item.thumbnail_url || item.preview_image || item.default_image?.url || '');
-  const thumbnail = /^https:\/\/cdn\.thingiverse\.com\//i.test(thumbnailCandidate) ? thumbnailCandidate : '';
-  const license = item.license?.name || item.license_name || (typeof item.license === 'string' ? item.license : '') || 'Licence not provided in search results';
-  return {
-    id: String(id),
-    name: item.name || item.title || `Thingiverse model ${id}`,
-    creator,
-    thumbnail,
-    url: safeUrl,
-    license
-  };
-}
-
-async function previewThingiverseStlInViewport(file) {
-  if (!file || !file.id) return;
-  activeThingiverseFile = file;
-  $('thingiverseStatus').textContent = `Loading 3D preview for ${file.name}…`;
-
-  try {
-    const res = await fetch(`/.netlify/functions/thingiverse?fileId=${encodeURIComponent(file.id)}`);
-    if (!res.ok) throw new Error('Could not load STL geometry');
-
-    const arrayBuffer = await res.arrayBuffer();
-    const geometry = stlLoader.parse(arrayBuffer);
-
-    transformControls.detach();
-    while (designGroup.children.length) {
-      const child = designGroup.children[0];
-      if (child === cadMeshGroup) { designGroup.remove(cadMeshGroup); continue; }
-      child.geometry?.dispose();
-      designGroup.remove(child);
-    }
-
-    geometry.computeBoundingBox();
-    const box = geometry.boundingBox;
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-
-    geometry.translate(-center.x, -center.y, -box.min.z);
-    geometry.computeVertexNormals();
-
-    const mesh = new THREE.Mesh(geometry, matBase);
-    designGroup.add(mesh);
-
-    const volumeCm3 = (size.x * size.y * size.z * 0.35) / 1000;
-    const weightG = Math.max(1.0, volumeCm3 * 1.24).toFixed(1);
-    const mins = Math.max(6, Math.round(weightG * 1.6));
-    $('statDim').textContent = `${Math.round(size.x)} x ${Math.round(size.y)} x ${size.z.toFixed(1)} mm`;
-    $('statWeight').textContent = `~${weightG} g PLA`;
-    $('statCost').textContent = `Cost: ~₹${(weightG * 1.5).toFixed(2)}`;
-    $('statPrintTime').textContent = `~${mins} mins`;
-    $('statLayers').textContent = `${Math.round(size.z / 0.2)} layers @ 0.2mm`;
-
-    $('thingiverseStatus').textContent = `Previewing ${file.name} on build bed.`;
-  } catch (err) {
-    console.error('3D STL preview error:', err);
-    $('thingiverseStatus').textContent = '3D preview unavailable for this file, but you can still download or submit it.';
-  }
-}
-
-async function searchThingiverse(query) {
-  const status = $('thingiverseStatus');
-  const results = $('thingiverseResults');
-  const btn = $('thingiverseSearchBtn');
-  btn.disabled = true;
-  btn.textContent = 'Searching…';
-  status.textContent = 'Searching Thingiverse…';
-  results.innerHTML = '';
-  try {
-    const sort = $('thingiverseSort').value;
-    const response = await fetch(`/.netlify/functions/search?q=${encodeURIComponent(query)}&sort=${encodeURIComponent(sort)}`);
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || `Thingiverse search failed (HTTP ${response.status}).`);
-    const items = getThingiverseItems(payload).map(thingiverseModelFromApi).filter(Boolean);
-    if (!items.length) {
-      status.textContent = 'No models found. Try a different search phrase.';
-      return;
-    }
-    status.textContent = `Found ${items.length} model${items.length === 1 ? '' : 's'}. Select one to inspect it.`;
-    results.innerHTML = items.map(model => `
-      <article class="overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
-        <div class="aspect-[4/3] bg-slate-900 flex items-center justify-center overflow-hidden">
-          ${model.thumbnail ? `<img src="${escapeHtml(model.thumbnail)}" alt="" loading="lazy" class="w-full h-full object-cover">` : '<span class="text-slate-500 text-3xl">⬡</span>'}
-        </div>
-        <div class="p-2.5 space-y-1.5">
-          <h4 class="text-[11px] leading-snug text-white font-black">${escapeHtml(model.name)}</h4>
-          <p class="text-[9px] text-slate-400">By ${escapeHtml(model.creator)}</p>
-          <button type="button" data-thingiverse-id="${escapeHtml(model.id)}" class="thingiverse-select-btn w-full py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-200 font-bold text-[10px]">View model details</button>
-        </div>
-      </article>`).join('');
-    results.querySelectorAll('.thingiverse-select-btn').forEach(button => {
-      button.addEventListener('click', () => {
-        const chosen = items.find(model => model.id === button.dataset.thingiverseId);
-        if (chosen) selectThingiverseModel(chosen);
-      });
-    });
-  } catch (error) {
-    console.error('Thingiverse search error:', error);
-    status.textContent = error.message || 'Could not search Thingiverse. Please try again.';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Search';
-  }
-}
-
-// The Thingiverse API may reject Netlify's server IP with Cloudflare 403.
-// Let customers submit a public model URL directly so they can still request a print.
-$('thingiverseSearchForm').addEventListener('submit', event => {
-  event.preventDefault();
-  searchThingiverse($('thingiverseQuery').value.trim());
-});
-
+// --- THINGIVERSE URL LINK ---
 $('thingiverseLinkForm').addEventListener('submit', event => {
   event.preventDefault();
   const rawUrl = $('thingiverseUrlInput').value.trim();
   let parsed;
-  try {
-    parsed = new URL(rawUrl);
-  } catch (error) {
+  try { parsed = new URL(rawUrl); } catch (error) {
     $('thingiverseStatus').textContent = 'Paste a valid Thingiverse model URL.';
     return;
   }
   const match = parsed.pathname.match(/^\/thing:(\d+)(?:\/|$)/i);
-  if (!/^https?:$/.test(parsed.protocol) || !/(^|\.)thingiverse\.com$/i.test(parsed.hostname) || !match) {
-    $('thingiverseStatus').textContent = 'Use a Thingiverse model page link, such as https://www.thingiverse.com/thing:123456.';
+  if (parsed.protocol !== 'https:' || !/(^|\.)thingiverse\.com$/i.test(parsed.hostname) || !match) {
+    $('thingiverseStatus').textContent = 'Use a Thingiverse model link such as https://www.thingiverse.com/thing:123456.';
     return;
   }
-  const model = {
-    id: match[1],
-    name: `Thingiverse model ${match[1]}`,
-    creator: 'See original Thingiverse page',
-    license: 'Please verify on Thingiverse; manager review required',
-    url: `https://www.thingiverse.com/thing:${match[1]}`,
-    thumbnail: ''
-  };
-  selectedThingiverseModel = model;
-  activeThingiverseFile = null;
+  const modelId = match[1];
+  const modelUrl = 'https://www.thingiverse.com/thing:' + modelId;
+  selectedThingiverseModel = { url: modelUrl };
+  $('thingiverseSelectedLink').href = modelUrl;
   $('thingiverseSelected').classList.remove('hidden');
-  $('thingiverseSelectedName').textContent = model.name;
-  $('thingiverseSelectedMeta').textContent = `Thingiverse ID: ${model.id} • Details will be checked during manager review.`;
-  $('thingiverseSelectedLicense').textContent = `Licence: ${model.license}`;
-  $('thingiverseSelectedLink').href = model.url;
-  $('thingiverseFileList').innerHTML = '<p class="text-[10px] text-slate-400">API preview is unavailable. Open the original page to review the model and files.</p>';
-  $('thingiverseStatus').textContent = 'Model link added. Submit the request for manager review.';
+  $('thingiverseStatus').textContent = 'Link added. The manager will review the model before printing.';
 });
 
-async function selectThingiverseModel(model) {
-  const selected = $('thingiverseSelected');
-  const fileListEl = $('thingiverseFileList');
-  selected.classList.remove('hidden');
-  $('thingiverseSelectedName').textContent = model.name;
-  $('thingiverseSelectedMeta').textContent = `Thingiverse ID: ${model.id} • Creator: ${model.creator}`;
-  $('thingiverseSelectedLicense').textContent = `Licence: ${model.license}`;
-  $('thingiverseSelectedLink').href = model.url;
-  fileListEl.innerHTML = '<p class="text-[10px] text-slate-400 italic">Loading downloadable files…</p>';
-  $('thingiverseStatus').textContent = 'Loading model details, files, and licence…';
-  selectedThingiverseModel = model;
-  activeThingiverseFile = null;
-
-  try {
-    const [detail, files] = await Promise.all([
-      fetchThingiverseJson({ id: model.id }),
-      fetchThingiverseJson({ id: model.id, files: 'true' })
-    ]);
-
-    if (detail) {
-      const creator = detail.creator?.name || detail.creator?.username || model.creator;
-      const licence = detail.license?.name || detail.license || detail.license_name || model.license;
-      const detailUrl = detail.public_url || detail.url || model.url;
-      selectedThingiverseModel = {
-        ...model,
-        creator,
-        license: typeof licence === 'string' ? licence : model.license,
-        url: /^https:\/\/www\.thingiverse\.com\//i.test(detailUrl) ? detailUrl : model.url
-      };
-      $('thingiverseSelectedMeta').textContent = `Thingiverse ID: ${model.id} • Creator: ${creator}`;
-      $('thingiverseSelectedLicense').textContent = `Licence: ${selectedThingiverseModel.license}`;
-      $('thingiverseSelectedLink').href = selectedThingiverseModel.url;
-    }
-
-    if (Array.isArray(files) && files.length > 0) {
-      selectedThingiverseModel.files = files;
-      fileListEl.innerHTML = files.map((f, idx) => {
-        const isStl = /\.stl$/i.test(f.name || '');
-        const dlHref = f.public_url || f.download_url || selectedThingiverseModel.url;
-        return `
-          <div class="flex items-center justify-between gap-1.5 p-1.5 rounded-lg bg-slate-950/90 border border-slate-800 text-[10px]">
-            <span class="truncate text-slate-200 font-bold" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span>
-            <div class="flex items-center gap-1 shrink-0">
-              ${isStl ? `<button type="button" data-file-idx="${idx}" class="tv-preview-btn px-2 py-0.5 rounded bg-indigo-600/40 hover:bg-indigo-600/60 text-indigo-200 font-bold">3D View</button>` : ''}
-              <a href="${escapeHtml(dlHref)}" target="_blank" rel="noopener noreferrer" download class="px-2 py-0.5 rounded bg-emerald-600/40 hover:bg-emerald-600/60 text-emerald-200 font-bold">Download</a>
-            </div>
-          </div>`;
-      }).join('');
-
-      fileListEl.querySelectorAll('.tv-preview-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const f = files[Number(btn.dataset.fileIdx)];
-          if (f) previewThingiverseStlInViewport(f);
-        });
-      });
-
-      const firstStl = files.find(f => /\.stl$/i.test(f.name || ''));
-      if (firstStl) {
-        await previewThingiverseStlInViewport(firstStl);
-      } else {
-        $('thingiverseStatus').textContent = 'Model details loaded. No STL file found for 3D preview.';
-      }
-    } else {
-      fileListEl.innerHTML = '<p class="text-[10px] text-slate-400">No individual files returned; use the Thingiverse link above.</p>';
-    }
-  } catch (error) {
-    $('thingiverseStatus').textContent = 'Model selected; full details could not be loaded. Manager review is required.';
-    fileListEl.innerHTML = '';
-  }
-}
+$('clearThingiverseSelection').addEventListener('click', () => {
+  selectedThingiverseModel = null;
+  $('thingiverseSelected').classList.add('hidden');
+  $('thingiverseUrlInput').value = '';
+  $('thingiverseStatus').textContent = '';
+});
 
 // --- SUBMISSION & SUPABASE BACKEND INTEGRATION ---
 $('openSubmitModalBtn').addEventListener('click', () => {
+  if (currentMode === 'thingiverse' && !selectedThingiverseModel) {
+    $('thingiverseStatus').textContent = 'Paste and use a Thingiverse model link before submitting.';
+    $('thingiverseUrlInput').focus();
+    return;
+  }
   $('submitModal').classList.remove('hidden');
-  $('submitModal').querySelector('h3 span').textContent = selectedThingiverseModel ? 'Submit Thingiverse Model' : 'Submit Order for Printing';
+  $('submitModal').querySelector('h3 span').textContent = currentMode === 'thingiverse' ? 'Submit Thingiverse Model' : 'Submit Order for Printing';
+  $('orderPrice').textContent = $('statCost').textContent;
 });
 $('closeSubmitModal').addEventListener('click', () => $('submitModal').classList.add('hidden'));
 
@@ -1661,16 +1380,12 @@ $('orderForm').addEventListener('submit', async (e) => {
   const btn = $('submitOrderBtn');
   const msg = $('submitStatusMsg');
   btn.disabled = true;
-  btn.textContent = 'Generating STL & Submitting...';
+  btn.textContent = 'Submitting order...';
   msg.classList.add('hidden');
 
   const orderId = 'KEY-' + Math.random().toString(36).substring(2, 8).toUpperCase();
   const filename = `${orderId}.stl`;
   const thingiverseOrder = currentMode === 'thingiverse' && selectedThingiverseModel ? {
-    id: selectedThingiverseModel.id,
-    name: selectedThingiverseModel.name,
-    creator: selectedThingiverseModel.creator,
-    license: selectedThingiverseModel.license,
     url: selectedThingiverseModel.url,
     review_required: true
   } : null;
@@ -1683,7 +1398,7 @@ $('orderForm').addEventListener('submit', async (e) => {
     pickup_location: 'Standard Pickup',
     status: 'Submitted',
     stl_url: thingiverseOrder ? null : filename,
-    specs: { text: $('word').value, thickness: $('baseThick').value, payment: 'Cash on Pickup', ...(thingiverseOrder ? { thingiverse: thingiverseOrder } : {}) },
+    specs: { text: $('word').value, thickness: $('baseThick').value, payment: 'Cash on Pickup', price_inr: estimatedTotalPriceInr, ...(thingiverseOrder ? { thingiverse: thingiverseOrder } : {}) },
     created_at: new Date().toISOString()
   };
 
@@ -1709,10 +1424,11 @@ $('orderForm').addEventListener('submit', async (e) => {
     }
 
     msg.className = 'text-xs font-bold p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
-    msg.innerHTML = `Order Placed! Order ID: <strong>${orderId}</strong><br>${thingiverseOrder ? 'Thingiverse model sent for manager review.' : 'Your custom STL was submitted.'}<br>Check status anytime using your email: <strong>${escapeHtml($('custEmail').value)}</strong>.<br>Payment: 💵 Cash on Pickup.`;
+    msg.innerHTML = `Order Placed! Order ID: <strong>${orderId}</strong><br>${thingiverseOrder ? 'Thingiverse model link sent for manager review.' : 'Your custom STL was submitted.'}<br>Total: <strong>₹${estimatedTotalPriceInr.toFixed(2)}</strong><br>Pick up and pay cash when ready. Check status using: <strong>${escapeHtml($('custEmail').value)}</strong>.`;
     msg.classList.remove('hidden');
     selectedThingiverseModel = null;
     $('thingiverseSelected').classList.add('hidden');
+    $('thingiverseUrlInput').value = '';
 
   } catch (err) {
     console.error('Order submission error:', err);
@@ -1825,7 +1541,8 @@ async function loadAdminOrders() {
           <span class="font-black text-indigo-400 text-xs">${o.id}</span>
           <span class="font-bold text-slate-200 block">${o.customer_name} (${o.customer_email})</span>
           <span class="text-[10px] text-amber-400 block font-bold">💵 Cash Payment on Pickup ${o.customer_phone ? '• 📞 ' + o.customer_phone : ''}</span>
-          ${o.specs && o.specs.thingiverse ? `<span class="text-[10px] text-cyan-300 block">Thingiverse: ${escapeHtml(o.specs.thingiverse.name)} • Licence: ${escapeHtml(o.specs.thingiverse.license)}</span>` : ''}
+          ${o.specs && Number.isFinite(Number(o.specs.price_inr)) ? `<span class="text-[10px] text-emerald-300 block font-bold">Customer total: &#8377;${Number(o.specs.price_inr).toFixed(2)}</span>` : ''}
+          ${o.specs && o.specs.thingiverse ? `<span class="text-[10px] text-cyan-300 block">Thingiverse model link attached</span>` : ''}
         </div>
         <div class="flex items-center gap-2">
           ${o.specs && o.specs.thingiverse ? `<a href="${escapeHtml(o.specs.thingiverse.url)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 font-bold text-[11px] transition">🔎 Review Thingiverse Model</a>` : `<button onclick="window.downloadOrderStl('${o.stl_url || o.id + '.stl'}')" class="px-2.5 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 font-bold text-[11px] transition">📥 Download STL</button>`}
@@ -1880,13 +1597,6 @@ window.updateOrderStatus = async (id, status) => {
 
 // Download STL button handler
 $('exportStl').addEventListener('click', () => {
-  if (currentMode === 'thingiverse' && activeThingiverseFile) {
-    const a = document.createElement('a');
-    a.href = `/.netlify/functions/thingiverse?fileId=${encodeURIComponent(activeThingiverseFile.id)}`;
-    a.download = activeThingiverseFile.name || 'thingiverse-model.stl';
-    a.click();
-    return;
-  }
   const stlData = generateExportableBinary();
   const blob = new Blob([stlData], { type: 'application/octet-stream' });
   const a = document.createElement('a');
