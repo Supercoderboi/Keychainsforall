@@ -1368,33 +1368,26 @@ $('deleteObj').addEventListener('click', () => {
 });
 
 // --- THINGIVERSE BROWSER (WITH AUTOMATIC BROWSER FALLBACK FOR CLOUDFLARE) ---
-const THINGIVERSE_PUBLIC_TOKEN = "51533209463d211498753322a718e5e2";
-
-async function fetchThingiverseJson(netlifyParams, directPath, directParams = {}) {
-  // 1. Try Netlify proxy first
+async function fetchThingiverseJson(netlifyParams) {
+  // Keep the API credential on the server; browser requests to Thingiverse are
+  // blocked by CORS and cannot safely carry a shared token.
+  let proxyRes;
   try {
-    const proxyRes = await fetch(`/.netlify/functions/thingiverse?${new URLSearchParams(netlifyParams)}`);
-    if (proxyRes.ok) return await proxyRes.json();
-  } catch (e) {
-    // Proceed to browser fallback
+    proxyRes = await fetch(`/.netlify/functions/thingiverse?${new URLSearchParams(netlifyParams)}`);
+  } catch (error) {
+    throw new Error('Could not reach the Thingiverse service. Make sure this site is deployed on Netlify with the function enabled.');
   }
 
-  // 2. Fallback: Fetch directly from visitor's browser if Cloudflare blocks Netlify's AWS IP
-  const directUrl = new URL(directPath, "https://api.thingiverse.com");
-  directUrl.searchParams.set("access_token", THINGIVERSE_PUBLIC_TOKEN);
-  Object.entries(directParams).forEach(([k, v]) => {
-    if (v) directUrl.searchParams.set(k, v);
-  });
-
-  const directRes = await fetch(directUrl.toString(), {
-    headers: {
-      "Authorization": `Bearer ${THINGIVERSE_PUBLIC_TOKEN}`,
-      "Accept": "application/json"
-    }
-  });
-  const data = await directRes.json();
-  if (!directRes.ok) throw new Error(data.error || `Thingiverse error (${directRes.status})`);
-  return data;
+  let payload;
+  try {
+    payload = await proxyRes.json();
+  } catch (error) {
+    throw new Error(`Thingiverse service returned an invalid response (HTTP ${proxyRes.status}).`);
+  }
+  if (!proxyRes.ok) {
+    throw new Error(payload.error || `Thingiverse request failed (HTTP ${proxyRes.status}).`);
+  }
+  return payload;
 }
 
 function escapeHtml(value = '') {
@@ -1435,12 +1428,7 @@ async function previewThingiverseStlInViewport(file) {
   $('thingiverseStatus').textContent = `Loading 3D preview for ${file.name}…`;
 
   try {
-    let res = await fetch(`/.netlify/functions/thingiverse?fileId=${encodeURIComponent(file.id)}`);
-    if (!res.ok) {
-      res = await fetch(`https://api.thingiverse.com/files/${encodeURIComponent(file.id)}/download?access_token=${THINGIVERSE_PUBLIC_TOKEN}`, {
-        headers: { "Authorization": `Bearer ${THINGIVERSE_PUBLIC_TOKEN}` }
-      });
-    }
+    const res = await fetch(`/.netlify/functions/thingiverse?fileId=${encodeURIComponent(file.id)}`);
     if (!res.ok) throw new Error('Could not load STL geometry');
 
     const arrayBuffer = await res.arrayBuffer();
@@ -1494,9 +1482,7 @@ async function searchThingiverse(query) {
   try {
     const sort = $('thingiverseSort').value;
     const payload = await fetchThingiverseJson(
-      { query, sort },
-      `/search/${encodeURIComponent(query)}`,
-      { type: 'things', per_page: '20', sort }
+      { query, sort }
     );
     const items = getThingiverseItems(payload).map(thingiverseModelFromApi).filter(Boolean);
     if (!items.length) {
@@ -1545,8 +1531,8 @@ async function selectThingiverseModel(model) {
 
   try {
     const [detail, files] = await Promise.all([
-      fetchThingiverseJson({ id: model.id }, `/things/${encodeURIComponent(model.id)}`),
-      fetchThingiverseJson({ id: model.id, files: 'true' }, `/things/${encodeURIComponent(model.id)}/files`)
+      fetchThingiverseJson({ id: model.id }),
+      fetchThingiverseJson({ id: model.id, files: 'true' })
     ]);
 
     if (detail) {
